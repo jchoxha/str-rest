@@ -1,26 +1,26 @@
 import React, { useState } from 'react'
 import GuestView from './GuestView'
 
+function SidebarItem({ label, icon, current, onClick, onSelect, extraStyle }) {
+  return (
+    <div
+      className={`sb-item ${current === label ? 'active' : ''}`}
+      style={extraStyle || {}}
+      onClick={() => {
+        if (onClick) onClick();
+        else onSelect(label);
+      }}
+    >
+      {icon && <div className="sb-dot">{icon}</div>}
+      {!icon && <div style={{width: '24px'}} />}
+      {label}
+    </div>
+  )
+}
+
 export default function HostDashboard({ propertiesData, setPropertiesData }) {
   const [selectedProperty, setSelectedProperty] = useState(null)
   const [activeTab, setActiveTab] = useState('Dashboard')
-
-  const SidebarItem = ({ label, icon, current, onClick, extraStyle }) => {
-    return (
-      <div 
-        className={`sb-item ${current === label ? 'active' : ''}`}
-        style={extraStyle || {}}
-        onClick={(e) => {
-          if(onClick) onClick();
-          else setActiveTab(label);
-        }}
-      >
-        {icon && <div className="sb-dot">{icon}</div>}
-        {!icon && <div style={{width: '24px'}} />}
-        {label}
-      </div>
-    )
-  }
 
   // Icons identical to original provided template
   const IconDashboard = <svg viewBox="0 0 9 9" fill="white"><rect x="1" y="1" width="3" height="3" rx="0.5"/><rect x="5" y="1" width="3" height="3" rx="0.5"/><rect x="1" y="5" width="3" height="3" rx="0.5"/><rect x="5" y="5" width="3" height="3" rx="0.5"/></svg>;
@@ -112,25 +112,25 @@ export default function HostDashboard({ propertiesData, setPropertiesData }) {
 
         <div className="sb-section">
           <div className="sb-label">Overview</div>
-          <SidebarItem label="Dashboard" icon={IconDashboard} current={activeTab} />
-          <SidebarItem label="Analytics" icon={IconAnalytics} current={activeTab} />
+          <SidebarItem label="Dashboard" icon={IconDashboard} current={activeTab} onSelect={setActiveTab} />
+          <SidebarItem label="Analytics" icon={IconAnalytics} current={activeTab} onSelect={setActiveTab} />
         </div>
         
         <div className="sb-section">
           <div className="sb-label">Management</div>
-          <SidebarItem label="Site Builder" icon={IconProperty} current={activeTab} />
-          <SidebarItem label="Property Details" icon={IconProperty} current={activeTab} />
+          <SidebarItem label="Site Builder" icon={IconProperty} current={activeTab} onSelect={setActiveTab} />
+          <SidebarItem label="Property Details" icon={IconProperty} current={activeTab} onSelect={setActiveTab} />
         </div>
         
         <div className="sb-section">
           <div className="sb-label">Storefront</div>
-          <SidebarItem label="Shop My Stay" icon={IconShop} current={activeTab} />
-          <SidebarItem label="Add Products" icon={IconAddProduct} current={activeTab} />
+          <SidebarItem label="Shop My Stay" icon={IconShop} current={activeTab} onSelect={setActiveTab} />
+          <SidebarItem label="Add Products" icon={IconAddProduct} current={activeTab} onSelect={setActiveTab} />
         </div>
         
         <div className="sb-section">
           <div className="sb-label">Settings</div>
-          <SidebarItem label="Preferences" icon={IconSettings} current={activeTab} />
+          <SidebarItem label="Preferences" icon={IconSettings} current={activeTab} onSelect={setActiveTab} />
         </div>
       </div>
 
@@ -765,25 +765,6 @@ function SiteBuilderView({ property, propertiesData, setPropertiesData }) {
         }
       }
     })
-  }
-
-  const handleContentSave = (newContent) => {
-    try {
-      const parsed = JSON.parse(newContent)
-      setPropertiesData({
-        ...propertiesData,
-        [property]: {
-          ...propData,
-          content: {
-            ...propData.content,
-            [editingSection]: parsed
-          }
-        }
-      })
-      setEditingSection(null)
-    } catch(e) {
-      alert("Invalid JSON format. Please check your syntax.")
-    }
   }
 
   if (editingSection) {

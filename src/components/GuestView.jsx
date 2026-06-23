@@ -1,14 +1,43 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 
-import tinyHomeImg from '../assets/tiny_home.png'
-import velvetPillowImg from '../assets/velvet_pillow.png'
 import pourOverImg from '../assets/pour_over.png'
 import kitchenImg from '../assets/tiny_home_kitchen.png'
 import deckViewImg from '../assets/mountain_view_deck.png'
-import breweryImg from '../assets/riverside_brewery.png'
-import hostPortraitImg from '../assets/host_portrait.png'
 
-export default function GuestView({ 
+function PreviewWrapper({ children, section, isPreviewMode, onMove, onToggle, onEdit, isFirst, isLast }) {
+  if (!isPreviewMode) {
+    if (!section.visible) return null;
+    return children;
+  }
+
+  return (
+    <div style={{ position: 'relative', opacity: section.visible ? 1 : 0.4, transition: 'opacity 0.2s', marginBottom: '16px' }} className="preview-section-wrapper">
+      <div style={{ pointerEvents: 'none' }}>
+        {children}
+      </div>
+      <div
+        className="preview-overlay"
+        style={{
+          position: 'absolute', top: -8, left: -8, right: -8, bottom: -8,
+          background: 'rgba(59, 130, 246, 0.05)', border: '2px dashed #3b82f6', borderRadius: '12px',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          opacity: 0, transition: 'opacity 0.2s', zIndex: 10, cursor: 'default'
+        }}
+        onMouseEnter={e => e.currentTarget.style.opacity = 1}
+        onMouseLeave={e => e.currentTarget.style.opacity = 0}
+      >
+        <div style={{ background: 'white', padding: '8px', borderRadius: '8px', display: 'flex', gap: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+          <button onClick={(e) => { e.stopPropagation(); onMove(-1); }} disabled={isFirst} style={{ padding: '6px 12px', background: '#f1f5f9', border: 'none', borderRadius: '4px', cursor: isFirst ? 'default' : 'pointer', opacity: isFirst ? 0.5 : 1 }}>▲</button>
+          <button onClick={(e) => { e.stopPropagation(); onMove(1); }} disabled={isLast} style={{ padding: '6px 12px', background: '#f1f5f9', border: 'none', borderRadius: '4px', cursor: isLast ? 'default' : 'pointer', opacity: isLast ? 0.5 : 1 }}>▼</button>
+          <button onClick={(e) => { e.stopPropagation(); onToggle(); }} style={{ padding: '6px 12px', background: '#f1f5f9', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>{section.visible ? '🙈 Hide' : '👁️ Show'}</button>
+          <button onClick={(e) => { e.stopPropagation(); onEdit(); }} style={{ padding: '6px 16px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 500 }}>✏️ Edit Content</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function GuestView({
   propertiesData, 
   isPreviewMode = false, 
   previewLayoutType = 'unlocked', 
@@ -16,55 +45,20 @@ export default function GuestView({
   onToggleVisibility, 
   onEditSection 
 }) {
-  useEffect(() => {
-    if (isPreviewMode) {
-      setViewState(previewLayoutType);
-      setSubView(null);
-    }
-  }, [isPreviewMode, previewLayoutType]);
-
   const propData = (propertiesData && propertiesData["The Littleton Tiny Home"]) || {};
   const contentData = propData.content || {};
 
-  const PreviewWrapper = ({ children, section, index, isPreviewMode, onMove, onToggle, onEdit, isFirst, isLast }) => {
-    if (!isPreviewMode) {
-      if (!section.visible) return null;
-      return children;
-    }
-    
-    return (
-      <div style={{ position: 'relative', opacity: section.visible ? 1 : 0.4, transition: 'opacity 0.2s', marginBottom: '16px' }} className="preview-section-wrapper">
-        <div style={{ pointerEvents: 'none' }}>
-          {children}
-        </div>
-        <div 
-          className="preview-overlay"
-          style={{
-            position: 'absolute', top: -8, left: -8, right: -8, bottom: -8,
-            background: 'rgba(59, 130, 246, 0.05)', border: '2px dashed #3b82f6', borderRadius: '12px',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-            opacity: 0, transition: 'opacity 0.2s', zIndex: 10, cursor: 'default'
-          }}
-          onMouseEnter={e => e.currentTarget.style.opacity = 1}
-          onMouseLeave={e => e.currentTarget.style.opacity = 0}
-        >
-          <div style={{ background: 'white', padding: '8px', borderRadius: '8px', display: 'flex', gap: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-            <button onClick={(e) => { e.stopPropagation(); onMove(-1); }} disabled={isFirst} style={{ padding: '6px 12px', background: '#f1f5f9', border: 'none', borderRadius: '4px', cursor: isFirst ? 'default' : 'pointer', opacity: isFirst ? 0.5 : 1 }}>▲</button>
-            <button onClick={(e) => { e.stopPropagation(); onMove(1); }} disabled={isLast} style={{ padding: '6px 12px', background: '#f1f5f9', border: 'none', borderRadius: '4px', cursor: isLast ? 'default' : 'pointer', opacity: isLast ? 0.5 : 1 }}>▼</button>
-            <button onClick={(e) => { e.stopPropagation(); onToggle(); }} style={{ padding: '6px 12px', background: '#f1f5f9', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>{section.visible ? '🙈 Hide' : '👁️ Show'}</button>
-            <button onClick={(e) => { e.stopPropagation(); onEdit(); }} style={{ padding: '6px 16px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 500 }}>✏️ Edit Content</button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const [viewState, setViewState] = useState('initial');
+  const [internalViewState, setViewState] = useState('initial');
   const [passcode, setPasscode] = useState('');
   const [error, setError] = useState(false);
   const [galleryOpen, setGalleryOpen] = useState(null);
-  const [subView, setSubView] = useState(null);
+  const [internalSubView, setSubView] = useState(null);
   const [guestName, setGuestName] = useState(null);
+
+  // In preview mode the view is driven entirely by props, so derive it during
+  // render rather than syncing internal state in an effect.
+  const viewState = isPreviewMode ? previewLayoutType : internalViewState;
+  const subView = isPreviewMode ? null : internalSubView;
 
   const goToSub = (view) => { setSubView(view); window.scrollTo(0, 0); };
   const goBack = () => { setSubView(null); window.scrollTo(0, 0); };
@@ -142,7 +136,7 @@ export default function GuestView({
       setViewState('unlocked');
       setError(false);
     } else {
-      const match = passcode.match(/^([a-zA-Z]+)([\d\s\-\/]+)$/);
+      const match = passcode.match(/^([a-zA-Z]+)([\d\s\-/]+)$/);
       if (match) {
         const name = match[1].charAt(0).toUpperCase() + match[1].slice(1).toLowerCase();
         setGuestName(name);
@@ -153,15 +147,6 @@ export default function GuestView({
       }
     }
   }
-
-  const galleryImages = [
-    { src: tinyHomeImg, alt: 'The Littleton Tiny Home exterior', span: true },
-    { src: kitchenImg, alt: 'Cozy kitchen details' },
-    { src: velvetPillowImg, alt: 'Comfortable interiors' },
-    { src: deckViewImg, alt: 'Mountain views from the deck' },
-    { src: pourOverImg, alt: 'Morning coffee ritual' },
-  ];
-
 
   const renderSection = (id, data) => {
     switch (id) {
