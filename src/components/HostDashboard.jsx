@@ -1,5 +1,8 @@
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import GuestView from './GuestView'
+import { useAuth } from '../auth/auth-context'
+import { listMyProperties, createProperty, updateProperty, deleteProperty, uploadImage } from '../lib/properties'
 
 function SidebarItem({ label, icon, current, onClick, onSelect, extraStyle }) {
   return (
@@ -18,9 +21,64 @@ function SidebarItem({ label, icon, current, onClick, onSelect, extraStyle }) {
   )
 }
 
-export default function HostDashboard({ propertiesData, setPropertiesData }) {
-  const [selectedProperty, setSelectedProperty] = useState(null)
+export default function HostDashboard() {
+  const { user, signOut } = useAuth()
+  const [properties, setProperties] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [selectedId, setSelectedId] = useState(null)
   const [activeTab, setActiveTab] = useState('Dashboard')
+
+  useEffect(() => {
+    let active = true
+    listMyProperties()
+      .then(rows => { if (active) setProperties(rows) })
+      .catch(() => { if (active) setProperties([]) })
+      .finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [])
+
+  const selectedProperty = properties.find(p => p.id === selectedId) || null
+
+  // Optimistic local update + debounced, merged persistence (per column).
+  const pendingRef = useRef({})
+  const timerRef = useRef(null)
+  const updateSelected = (patch) => {
+    const id = selectedId
+    if (!id) return
+    setProperties(prev => prev.map(p => (p.id === id ? { ...p, ...patch } : p)))
+    pendingRef.current = { ...pendingRef.current, ...patch }
+    clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(async () => {
+      const toSave = pendingRef.current
+      pendingRef.current = {}
+      try { await updateProperty(id, toSave) } catch (e) { console.error('Save failed', e) }
+    }, 600)
+  }
+
+  const handleCreate = async () => {
+    try {
+      const created = await createProperty({ name: 'New property' })
+      setProperties(prev => [created, ...prev])
+      setSelectedId(created.id)
+      setActiveTab('Property Details')
+    } catch (e) {
+      alert('Could not create property: ' + e.message)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!selectedProperty) return
+    if (!window.confirm(`Delete "${selectedProperty.name}"? This cannot be undone.`)) return
+    const id = selectedProperty.id
+    try {
+      await deleteProperty(id)
+      setProperties(prev => prev.filter(p => p.id !== id))
+      setSelectedId(null)
+      setActiveTab('Dashboard')
+    } catch (e) {
+      alert('Could not delete: ' + e.message)
+    }
+  }
 
   // Icons identical to original provided template
   const IconDashboard = <svg viewBox="0 0 9 9" fill="white"><rect x="1" y="1" width="3" height="3" rx="0.5"/><rect x="5" y="1" width="3" height="3" rx="0.5"/><rect x="1" y="5" width="3" height="3" rx="0.5"/><rect x="5" y="5" width="3" height="3" rx="0.5"/></svg>;
@@ -33,11 +91,11 @@ export default function HostDashboard({ propertiesData, setPropertiesData }) {
   const renderContent = () => {
     switch (activeTab) {
       case 'Site Builder':
-        return <SiteBuilderView property={selectedProperty} propertiesData={propertiesData} setPropertiesData={setPropertiesData} />
+        return <SiteBuilderView property={selectedProperty} onChange={updateSelected} />
       case 'Analytics':
         return <AnalyticsView property={selectedProperty} />
       case 'Property Details':
-        return <PropertyView property={selectedProperty} />
+        return <PropertyView property={selectedProperty} onChange={updateSelected} onDelete={handleDelete} />
       case 'Shop My Stay':
         return <ShopView property={selectedProperty} />
       case 'Add Products':
@@ -46,48 +104,61 @@ export default function HostDashboard({ propertiesData, setPropertiesData }) {
         return <PreferencesView property={selectedProperty} />
       case 'Dashboard':
       default:
-        return <OverviewView property={selectedProperty} />
+        return <OverviewView property={selectedProperty} onChange={updateSelected} />
     }
+  }
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#0f172a', color: '#94a3b8' }}>
+        Loading your properties…
+      </div>
+    )
   }
 
   if (!selectedProperty) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#0f172a', padding: '40px' }}>
-         <div style={{ textAlign: 'center', marginBottom: '48px' }}>
-           <div style={{ color: 'white', fontSize: '42px', fontWeight: 700, letterSpacing: '-1px' }}>str.rest</div>
-           <div style={{ fontSize: '18px', color: '#94a3b8', marginTop: '8px' }}>Select a property to manage</div>
-         </div>
-         <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', justifyContent: 'center', maxWidth: '1000px' }}>
-           {[
-             { name: 'The Littleton Tiny Home', loc: 'Littleton, NH', icon: '🏔️', rev: '$342 this week' },
-             { name: 'The Riverside Loft', loc: 'Portland, ME', icon: '🏙️', rev: '$520 this week' },
-             { name: 'The Summit Cabin', loc: 'Lincoln, NH', icon: '🌲', rev: '$210 this week' }
-           ].map((p, i) => (
-             <div 
-                key={i} 
-                onClick={() => setSelectedProperty(p.name)} 
-                style={{ width: '280px', background: '#1e293b', borderRadius: '16px', padding: '24px', cursor: 'pointer', border: '1px solid #334155', transition: 'all 0.2s', display: 'flex', flexDirection: 'column' }}
-                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.borderColor = '#3b82f6'; }}
-                onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.borderColor = '#334155'; }}
-             >
-               <div style={{ height: '120px', background: '#0f172a', borderRadius: '12px', marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '48px' }}>{p.icon}</div>
-               <div style={{ fontSize: '18px', fontWeight: 600, color: 'white' }}>{p.name}</div>
-               <div style={{ fontSize: '14px', color: '#94a3b8', marginTop: '4px' }}>{p.loc}</div>
-               <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid #334155', fontSize: '13px', color: '#10b981', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                 <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }}></div>
-                 {p.rev}
-               </div>
-             </div>
-           ))}
-           <div 
-              style={{ width: '280px', background: 'transparent', borderRadius: '16px', padding: '24px', cursor: 'pointer', border: '2px dashed #334155', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '260px', transition: 'all 0.2s' }}
+      <div style={{ minHeight: '100vh', background: '#0f172a', padding: '40px' }}>
+        <div style={{ maxWidth: '1000px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '48px' }}>
+          <div>
+            <div style={{ color: 'white', fontSize: '36px', fontWeight: 700, letterSpacing: '-1px' }}>str.rest</div>
+            <div style={{ fontSize: '15px', color: '#94a3b8', marginTop: '4px' }}>Your properties</div>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: '13px', color: '#94a3b8' }}>{user?.email}</div>
+            <button onClick={signOut} style={{ background: 'none', border: 'none', color: '#3b82f6', fontSize: '13px', cursor: 'pointer', padding: '4px 0' }}>Sign out</button>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', justifyContent: 'center', maxWidth: '1000px', margin: '0 auto' }}>
+          {properties.map((p) => (
+            <div
+              key={p.id}
+              onClick={() => { setSelectedId(p.id); setActiveTab('Dashboard'); }}
+              style={{ width: '280px', background: '#1e293b', borderRadius: '16px', padding: '24px', cursor: 'pointer', border: '1px solid #334155', transition: 'all 0.2s', display: 'flex', flexDirection: 'column' }}
               onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.borderColor = '#3b82f6'; }}
               onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.borderColor = '#334155'; }}
-           >
-             <div style={{ width: '48px', height: '48px', borderRadius: '24px', background: '#1e293b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', color: '#94a3b8', marginBottom: '16px' }}>+</div>
-             <div style={{ fontSize: '16px', fontWeight: 500, color: '#94a3b8' }}>Add new property</div>
-           </div>
-         </div>
+            >
+              <div style={{ height: '120px', background: '#0f172a', borderRadius: '12px', marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '48px', overflow: 'hidden' }}>
+                {p.hero_image ? <img src={p.hero_image} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '🏠'}
+              </div>
+              <div style={{ fontSize: '18px', fontWeight: 600, color: 'white' }}>{p.name}</div>
+              <div style={{ fontSize: '14px', color: '#94a3b8', marginTop: '4px' }}>{p.location || 'No location set'}</div>
+              <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid #334155', fontSize: '13px', color: p.published ? '#10b981' : '#94a3b8', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: p.published ? '#10b981' : '#64748b' }}></div>
+                {p.published ? 'Published' : 'Draft'}
+              </div>
+            </div>
+          ))}
+          <div
+            onClick={handleCreate}
+            style={{ width: '280px', background: 'transparent', borderRadius: '16px', padding: '24px', cursor: 'pointer', border: '2px dashed #334155', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '260px', transition: 'all 0.2s' }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.borderColor = '#3b82f6'; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.borderColor = '#334155'; }}
+          >
+            <div style={{ width: '48px', height: '48px', borderRadius: '24px', background: '#1e293b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', color: '#94a3b8', marginBottom: '16px' }}>+</div>
+            <div style={{ fontSize: '16px', fontWeight: 500, color: '#94a3b8' }}>Add new property</div>
+          </div>
+        </div>
       </div>
     )
   }
@@ -105,9 +176,14 @@ export default function HostDashboard({ propertiesData, setPropertiesData }) {
         <div className="sb-section" style={{ background: 'rgba(255,255,255,0.05)', padding: '12px', borderRadius: '8px', marginBottom: '24px' }}>
           <div style={{ fontSize: '10px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)', marginBottom: '8px', letterSpacing: '0.5px' }}>Current Property</div>
           <div style={{ fontSize: '14px', fontWeight: 500, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginRight: '8px' }}>{selectedProperty}</span>
-            <button onClick={() => { setSelectedProperty(null); setActiveTab('Dashboard'); }} style={{ background: 'none', border: 'none', color: '#3b82f6', fontSize: '12px', cursor: 'pointer', padding: 0 }}>Change</button>
+            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginRight: '8px' }}>{selectedProperty.name}</span>
+            <button onClick={() => { setSelectedId(null); setActiveTab('Dashboard'); }} style={{ background: 'none', border: 'none', color: '#3b82f6', fontSize: '12px', cursor: 'pointer', padding: 0 }}>Change</button>
           </div>
+          {selectedProperty.published && (
+            <Link to={`/p/${selectedProperty.slug}`} target="_blank" style={{ display: 'block', marginTop: '8px', fontSize: '11px', color: '#60a5fa', textDecoration: 'none' }}>
+              View guest page ↗
+            </Link>
+          )}
         </div>
 
         <div className="sb-section">
@@ -132,6 +208,10 @@ export default function HostDashboard({ propertiesData, setPropertiesData }) {
           <div className="sb-label">Settings</div>
           <SidebarItem label="Preferences" icon={IconSettings} current={activeTab} onSelect={setActiveTab} />
         </div>
+
+        <div className="sb-section" style={{ marginTop: 'auto' }}>
+          <SidebarItem label="Sign out" onClick={signOut} current={activeTab} onSelect={setActiveTab} />
+        </div>
       </div>
 
       {/* DYNAMIC CONTENT */}
@@ -146,17 +226,17 @@ export default function HostDashboard({ propertiesData, setPropertiesData }) {
 // SUB-VIEWS
 // -----------------------------------------------------------------------------
 
-function OverviewView({ property }) {
+function OverviewView({ property, onChange }) {
   return (
     <>
       <div className="page-header">
         <div>
-          <div className="page-title">{property}</div>
-          <div className="page-sub">Dashboard overview</div>
+          <div className="page-title">{property.name}</div>
+          <div className="page-sub">{property.published ? 'Published — live for guests' : 'Draft — not yet public'}</div>
         </div>
-        <button className="pub-btn">
+        <button className="pub-btn" onClick={() => onChange({ published: !property.published })}>
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6h8M7 3l3 3-3 3" stroke="white" strokeWidth="1.5" strokeLinecap="round"/></svg>
-          Publish changes
+          {property.published ? 'Unpublish' : 'Publish'}
         </button>
       </div>
 
@@ -380,52 +460,73 @@ function AnalyticsView() {
   )
 }
 
-function PropertyView({ property }) {
-  // Simple month grid
-  const days = Array.from({length: 31}, (_, i) => i + 1);
+function PropertyView({ property, onChange, onDelete }) {
+  const [uploading, setUploading] = useState(false)
+  const field = { width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', boxSizing: 'border-box' }
+  const lbl = { fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }
+
+  const onHeroFile = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    try {
+      const url = await uploadImage(file, property.id)
+      onChange({ hero_image: url })
+    } catch (err) {
+      alert('Upload failed: ' + err.message)
+    } finally {
+      setUploading(false)
+    }
+  }
+
   return (
     <>
       <div className="page-header">
         <div>
-          <div className="page-title">{property} Details</div>
-          <div className="page-sub">Manage availability and content</div>
+          <div className="page-title">{property.name} Details</div>
+          <div className="page-sub">Property settings — changes save automatically</div>
         </div>
-        <button className="pub-btn">Save property</button>
+        <button className="pub-btn" onClick={() => onChange({ published: !property.published })}>
+          {property.published ? 'Unpublish' : 'Publish'}
+        </button>
       </div>
 
       <div className="dash-grid">
-        <div className="dash-card">
-          <div className="dash-card-title">Availability (July 2025)</div>
-          <div style={{display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', textAlign: 'center', fontSize: '11px', color: '#94a3b8', marginBottom: '8px'}}>
-            <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
+        <div className="dash-card" style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
+          <div className="dash-card-title">Basic Info</div>
+          <div>
+            <label style={lbl}>Display Name</label>
+            <input type="text" value={property.name || ''} onChange={e => onChange({ name: e.target.value })} style={field} />
           </div>
-          <div style={{display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px'}}>
-            {/* offset */}
-            <div/><div/>
-            {days.map((day) => {
-              const booked = day >= 10 && day <= 14 || day >= 22 && day <= 24;
-              return (
-                <div key={day} style={{aspectRatio: '1/1', background: booked ? '#fef3c7' : '#f1f5f9', border: booked ? '1px solid #f59e0b' : '1px solid #cbd5e1', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: booked ? '#92400e' : '#64748b'}}>
-                  {day}
-                </div>
-              )
-            })}
+          <div>
+            <label style={lbl}>Location</label>
+            <input type="text" value={property.location || ''} onChange={e => onChange({ location: e.target.value })} placeholder="City, State" style={field} />
+          </div>
+          <div>
+            <label style={lbl}>Host name(s)</label>
+            <input type="text" value={property.host_names || ''} onChange={e => onChange({ host_names: e.target.value })} placeholder="e.g. Alex & Jordan" style={field} />
+          </div>
+          <div>
+            <label style={lbl}>Guest access code</label>
+            <input type="text" value={property.access_code || ''} onChange={e => onChange({ access_code: e.target.value })} placeholder="Code guests enter to unlock home details" style={field} />
           </div>
         </div>
 
         <div className="dash-card" style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
-          <div className="dash-card-title">Basic Info</div>
-          <div>
-            <label style={{fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px'}}>Display Name</label>
-            <input type="text" defaultValue={property} style={{width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px'}} />
+          <div className="dash-card-title">Hero image</div>
+          <div style={{ height: '160px', borderRadius: '12px', background: '#f1f5f9', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '13px' }}>
+            {property.hero_image ? <img src={property.hero_image} alt="Hero" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : 'No image yet'}
           </div>
-          <div>
-            <label style={{fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px'}}>Wifi Name (SSID)</label>
-            <input type="text" defaultValue="LittletonGuest" style={{width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px'}} />
-          </div>
-          <div>
-            <label style={{fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px'}}>Wifi Password</label>
-            <input type="text" defaultValue="mountains24" style={{width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px'}} />
+          <label className="pub-btn" style={{ alignSelf: 'flex-start', cursor: 'pointer' }}>
+            {uploading ? 'Uploading…' : 'Upload image'}
+            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={onHeroFile} disabled={uploading} />
+          </label>
+
+          <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid #f1f5f9' }}>
+            <div className="dash-card-title" style={{ color: '#ef4444' }}>Danger zone</div>
+            <button onClick={onDelete} style={{ padding: '8px 14px', background: '#fee2e2', color: '#ef4444', border: '1px solid #fecaca', borderRadius: '8px', fontSize: '13px', cursor: 'pointer' }}>
+              Delete this property
+            </button>
           </div>
         </div>
       </div>
@@ -721,14 +822,12 @@ function DynamicForm({ data, onChange }) {
   );
 }
 
-function SiteBuilderView({ property, propertiesData, setPropertiesData }) {
+function SiteBuilderView({ property, onChange }) {
   const [activeLayout, setActiveLayout] = useState('unlocked')
   const [editingSection, setEditingSection] = useState(null)
 
-  const propData = propertiesData[property] || propertiesData['The Littleton Tiny Home']
-  if (!propData) return <div>Property data not found</div>
-  
-  const layouts = propData.layouts[activeLayout]
+  const layoutsObj = property.layouts || { unlocked: [], booking: [] }
+  const layouts = layoutsObj[activeLayout] || []
 
   const moveItem = (index, direction) => {
     if (direction === -1 && index === 0) return
@@ -739,38 +838,18 @@ function SiteBuilderView({ property, propertiesData, setPropertiesData }) {
     newLayouts[index] = newLayouts[index + direction]
     newLayouts[index + direction] = temp
 
-    setPropertiesData({
-      ...propertiesData,
-      [property]: {
-        ...propData,
-        layouts: {
-          ...propData.layouts,
-          [activeLayout]: newLayouts
-        }
-      }
-    })
+    onChange({ layouts: { ...layoutsObj, [activeLayout]: newLayouts } })
   }
 
   const toggleVisibility = (index) => {
     const newLayouts = [...layouts]
     newLayouts[index] = { ...newLayouts[index], visible: !newLayouts[index].visible }
-    
-    setPropertiesData({
-      ...propertiesData,
-      [property]: {
-        ...propData,
-        layouts: {
-          ...propData.layouts,
-          [activeLayout]: newLayouts
-        }
-      }
-    })
+    onChange({ layouts: { ...layoutsObj, [activeLayout]: newLayouts } })
   }
 
   if (editingSection) {
+    const sectionContent = (property.content && property.content[editingSection]) || {};
 
-    const sectionContent = propData.content[editingSection] || {};
-    
     return (
       <div className="page-header" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
         <button onClick={() => setEditingSection(null)} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 500 }}>
@@ -778,21 +857,10 @@ function SiteBuilderView({ property, propertiesData, setPropertiesData }) {
         </button>
         <div className="page-title">Edit Content: {editingSection}</div>
         <div className="page-sub" style={{ marginBottom: '24px' }}>Modify the data driving this section</div>
-        
-        <DynamicForm 
-          data={sectionContent} 
-          onChange={(newData) => {
-            setPropertiesData({
-              ...propertiesData,
-              [property]: {
-                ...propData,
-                content: {
-                  ...propData.content,
-                  [editingSection]: newData
-                }
-              }
-            });
-          }} 
+
+        <DynamicForm
+          data={sectionContent}
+          onChange={(newData) => onChange({ content: { ...property.content, [editingSection]: newData } })}
         />
       </div>
     );
@@ -826,8 +894,7 @@ function SiteBuilderView({ property, propertiesData, setPropertiesData }) {
          <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '120px', height: '24px', background: '#1e293b', borderBottomLeftRadius: '12px', borderBottomRightRadius: '12px', zIndex: 50 }}></div>
          <div style={{ height: '100%', overflowY: 'auto', background: '#f5f1ea', position: 'relative' }}>
            <GuestView
-             propertiesData={propertiesData}
-             propertyName={property}
+             property={property}
              isPreviewMode={true}
              previewLayoutType={activeLayout}
              onMoveSection={(type, index, dir) => moveItem(index, dir)}

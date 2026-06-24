@@ -1,8 +1,6 @@
-import React, { useState } from 'react'
-
-import pourOverImg from '../assets/pour_over.png'
-import kitchenImg from '../assets/tiny_home_kitchen.png'
-import deckViewImg from '../assets/mountain_view_deck.png'
+import React, { useState, useEffect } from 'react'
+import { useParams } from 'react-router-dom'
+import { fetchPublicProperty, unlockProperty, listPosts, addPost } from '../lib/properties'
 
 function PreviewWrapper({ children, section, isPreviewMode, onMove, onToggle, onEdit, isFirst, isLast }) {
   if (!isPreviewMode) {
@@ -37,20 +35,53 @@ function PreviewWrapper({ children, section, isPreviewMode, onMove, onToggle, on
   );
 }
 
+// Map a guestbook_posts row (author, body, images, created_at) to the shape the
+// guestbook UI renders (author, text, date, images).
+function toPost(row) {
+  return {
+    id: row.id,
+    author: row.author,
+    text: row.body,
+    date: row.created_at
+      ? new Date(row.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+      : 'Just now',
+    images: Array.isArray(row.images) ? row.images : [],
+  };
+}
+
 export default function GuestView({
-  propertiesData, 
-  isPreviewMode = false, 
-  previewLayoutType = 'unlocked', 
-  onMoveSection, 
-  onToggleVisibility, 
+  property,
+  isPreviewMode = false,
+  previewLayoutType = 'unlocked',
+  onMoveSection,
+  onToggleVisibility,
   onEditSection,
-  propertyName
 }) {
-  // Render the requested property, falling back to the first one available.
-  const activeKey = (propertyName && propertiesData?.[propertyName])
-    ? propertyName
-    : (propertiesData ? Object.keys(propertiesData)[0] : undefined);
-  const propData = (propertiesData && propertiesData[activeKey]) || {};
+  const { slug } = useParams();
+
+  // Public route fetches the published property (secrets stripped) by slug;
+  // unlocking swaps in the full content. Preview mode renders the in-memory
+  // property the host is currently editing.
+  const [publicData, setPublicData] = useState(null);
+  const [unlockedData, setUnlockedData] = useState(null);
+  const [loadState, setLoadState] = useState(isPreviewMode ? 'ready' : 'loading'); // loading | ready | notfound
+
+  // The route keys this component by slug (see App.jsx), so each property
+  // gets a fresh mount — no synchronous state reset needed here.
+  useEffect(() => {
+    if (isPreviewMode) return;
+    let active = true;
+    fetchPublicProperty(slug)
+      .then((d) => {
+        if (!active) return;
+        setPublicData(d);
+        setLoadState(d ? 'ready' : 'notfound');
+      })
+      .catch(() => { if (active) setLoadState('notfound'); });
+    return () => { active = false; };
+  }, [slug, isPreviewMode]);
+
+  const propData = isPreviewMode ? (property || {}) : (unlockedData || publicData || {});
   const contentData = propData.content || {};
 
   const [internalViewState, setViewState] = useState('initial');
@@ -58,7 +89,7 @@ export default function GuestView({
   const [error, setError] = useState(false);
   const [galleryOpen, setGalleryOpen] = useState(null);
   const [internalSubView, setSubView] = useState(null);
-  const [guestName, setGuestName] = useState(null);
+  const [guestName] = useState(null);
 
   // In preview mode the view is driven entirely by props, so derive it during
   // render rather than syncing internal state in an effect.
@@ -68,90 +99,63 @@ export default function GuestView({
   const goToSub = (view) => { setSubView(view); window.scrollTo(0, 0); };
   const goBack = () => { setSubView(null); window.scrollTo(0, 0); };
 
-  const [guestbookPosts, setGuestbookPosts] = useState([
-    { id: 1, author: 'Sarah & Mike', date: 'October 2025', text: 'This tiny home is absolutely perfect! We loved waking up to the mountain views and enjoying coffee on the deck. The attention to detail in the design is incredible.', images: [deckViewImg, kitchenImg] },
-    { id: 2, author: 'The Jensens', date: 'September 2025', text: 'Such a cozy weekend getaway. The kitchen had everything we needed to cook meals, and the firepit was great for s\'mores. We\'ll definitely be back next fall!', images: [] },
-    { id: 3, author: 'Emily R.', date: 'August 2025', text: 'Loved the aesthetic of this place. The linen pillows and the Chemex made mornings feel so luxurious. Highly recommend taking the short drive to Franconia Falls.', images: [pourOverImg] }
-  ]);
+  // Guestbook is backed by the database (per property).
+  const [guestbookPosts, setGuestbookPosts] = useState([]);
   const [newPostText, setNewPostText] = useState('');
   const [newPostAuthor, setNewPostAuthor] = useState('');
-  const [newPostImages, setNewPostImages] = useState([]);
   const [userPostId, setUserPostId] = useState(null);
-  const [editingPostId, setEditingPostId] = useState(null);
 
-  const handleImageUpload = (e) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const newImages = Array.from(e.target.files).map(file => URL.createObjectURL(file));
-      setNewPostImages([...newPostImages, ...newImages]);
-    }
-  };
+  useEffect(() => {
+    const id = propData.id;
+    if (!id) return;
+    let active = true;
+    listPosts(id)
+      .then((rows) => { if (active) setGuestbookPosts(rows.map(toPost)); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [propData.id]);
 
-  const handlePostSubmit = (e) => {
+  const handlePostSubmit = async (e) => {
     e.preventDefault();
+    if (isPreviewMode || !propData.id) return;
     if (!newPostText.trim() || !newPostAuthor.trim()) return;
-
-    if (editingPostId) {
-      setGuestbookPosts(guestbookPosts.map(post => 
-        post.id === editingPostId 
-          ? { ...post, author: newPostAuthor, text: newPostText, images: newPostImages } 
-          : post
-      ));
-      setEditingPostId(null);
-    } else {
-      const newPost = {
-        id: Date.now(),
-        author: newPostAuthor,
-        date: 'Just now',
-        text: newPostText,
-        images: newPostImages
-      };
-      setGuestbookPosts([newPost, ...guestbookPosts]);
-      setUserPostId(newPost.id);
-    }
-    setNewPostText('');
-    setNewPostAuthor('');
-    setNewPostImages([]);
-  };
-
-  const handleEditPost = (post) => {
-    setEditingPostId(post.id);
-    setNewPostAuthor(post.author);
-    setNewPostText(post.text);
-    setNewPostImages(post.images || []);
-    window.scrollTo(0, 0);
-  };
-
-  const handleDeletePost = (id) => {
-    setGuestbookPosts(guestbookPosts.filter(post => post.id !== id));
-    if (userPostId === id) {
-      setUserPostId(null);
-    }
-    if (editingPostId === id) {
-      setEditingPostId(null);
+    try {
+      const saved = await addPost(propData.id, { author: newPostAuthor.trim(), body: newPostText.trim() });
+      setGuestbookPosts([toPost(saved), ...guestbookPosts]);
+      setUserPostId(saved.id);
       setNewPostText('');
       setNewPostAuthor('');
-      setNewPostImages([]);
+    } catch {
+      setError(true);
     }
   };
 
-  const handlePasscodeSubmit = (e) => {
+  const handlePasscodeSubmit = async (e) => {
     e.preventDefault();
-    const accessCode = (propData.accessCode || 'mountains24').toLowerCase();
-    if (passcode.toLowerCase() === accessCode) {
-      setGuestName(null);
-      setViewState('unlocked');
-      setError(false);
-    } else {
-      const match = passcode.match(/^([a-zA-Z]+)([\d\s\-/]+)$/);
-      if (match) {
-        const name = match[1].charAt(0).toUpperCase() + match[1].slice(1).toLowerCase();
-        setGuestName(name);
+    if (isPreviewMode) { setViewState('unlocked'); return; }
+    setError(false);
+    try {
+      const data = await unlockProperty(slug, passcode);
+      if (data) {
+        setUnlockedData(data);
         setViewState('unlocked');
-        setError(false);
       } else {
         setError(true);
       }
+    } catch {
+      setError(true);
     }
+  };
+
+  // Public route: show clear loading / not-found states.
+  if (!isPreviewMode && loadState === 'loading') {
+    return <div className="go-wrap"><div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b6559' }}>Loading…</div></div>;
+  }
+  if (!isPreviewMode && loadState === 'notfound') {
+    return <div className="go-wrap"><div style={{ minHeight: '60vh', display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center', justifyContent: 'center', color: '#6b6559' }}>
+      <div style={{ fontSize: 20, fontWeight: 600, color: '#2c2820' }}>Stay not found</div>
+      <div>This guidebook doesn't exist or isn't published.</div>
+    </div></div>;
   }
 
   const renderSection = (id, data) => {
@@ -640,38 +644,31 @@ export default function GuestView({
                 <div className="gs-label">Virtual Guestbook</div>
                 <div className="gs-title">Notes from past guests</div>
                 
-                {viewState === 'unlocked' && (!userPostId || editingPostId) && (
+                {viewState === 'unlocked' && !isPreviewMode && !userPostId && (
                   <form onSubmit={handlePostSubmit} className="guestbook-form">
-                    <input 
-                      type="text" 
-                      className="bf-input" 
-                      placeholder="Your name" 
+                    <input
+                      type="text"
+                      className="bf-input"
+                      placeholder="Your name"
                       value={newPostAuthor}
                       onChange={e => setNewPostAuthor(e.target.value)}
                     />
-                    <textarea 
-                      className="bf-input guestbook-textarea" 
+                    <textarea
+                      className="bf-input guestbook-textarea"
                       placeholder="Share a memory or recommendation from your stay..."
                       value={newPostText}
                       onChange={e => setNewPostText(e.target.value)}
                     />
-                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                      {newPostImages.map((src, i) => (
-                        <div key={i} style={{ width: '60px', height: '60px', borderRadius: '4px', overflow: 'hidden' }}>
-                          <img src={src} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Upload preview" />
-                        </div>
-                      ))}
-                    </div>
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                      <label className="db-btn guestbook-upload-btn" style={{ flex: 1, textAlign: 'center', cursor: 'pointer', background: '#e8e2d9', color: '#2c2820' }}>
-                        Upload Images
-                        <input type="file" multiple accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload} />
-                      </label>
-                      <button type="submit" className="db-btn guestbook-submit-btn" style={{ flex: 2, margin: 0 }}>
-                        {editingPostId ? 'Update Post' : 'Post to Guestbook'}
-                      </button>
-                    </div>
+                    <button type="submit" className="db-btn guestbook-submit-btn" style={{ width: '100%', margin: 0 }}>
+                      Post to Guestbook
+                    </button>
                   </form>
+                )}
+
+                {userPostId && (
+                  <div style={{ padding: '12px', textAlign: 'center', color: '#6b6559', fontSize: '14px' }}>
+                    Thanks for signing the guestbook! 🎉
+                  </div>
                 )}
 
                 <div className="guestbook-list">
@@ -690,12 +687,6 @@ export default function GuestView({
                           <span className="guestbook-post-author">— {post.author}</span>
                           <span className="guestbook-post-date">{post.date}</span>
                         </div>
-                        {userPostId === post.id && !editingPostId && (
-                          <div className="guestbook-post-actions">
-                            <button onClick={() => handleEditPost(post)} className="guestbook-action-btn">Edit</button>
-                            <button onClick={() => handleDeletePost(post.id)} className="guestbook-action-btn delete">Delete</button>
-                          </div>
-                        )}
                       </div>
                     </div>
                   ))}
