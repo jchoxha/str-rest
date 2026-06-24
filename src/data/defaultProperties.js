@@ -145,7 +145,295 @@ export const defaultPropertiesData = {
         btnText: 'Book direct & save 12%'
       },
       'guestbook': {
-        // Posts can still be local to GuestView, but let's assume global
+        // Guestbook posts are managed in GuestView's local state for now.
+      }
+    }
+  },
+
+  'The Riverside Loft': {
+    name: 'The Riverside Loft',
+    location: 'Old Port, Portland, Maine',
+    heroImage: breweryImg,
+    hostNames: 'Mara',
+    accessCode: 'portland22',
+
+    layouts: {
+      unlocked: [
+        { id: 'home-details', visible: true, label: 'Your home details' },
+        { id: 'house-rules', visible: true, label: 'House rules' },
+        { id: 'shop', visible: true, label: 'Shop your stay' },
+        { id: 'about-hosts', visible: true, label: 'Your Hosts' },
+        { id: 'guestbook', visible: true, label: 'Virtual guestbook' },
+        { id: 'direct-booking', visible: true, label: 'Direct Booking' },
+        { id: 'gallery', visible: true, label: 'Gallery' },
+        { id: 'local-recos', visible: true, label: 'Local favorites' },
+        { id: 'other-listings', visible: true, label: 'Our other places' }
+      ],
+      booking: [
+        { id: 'direct-booking', visible: true, label: 'Direct Booking' },
+        { id: 'guestbook', visible: true, label: 'Virtual guestbook' },
+        { id: 'about-hosts', visible: true, label: 'Your Hosts' },
+        { id: 'gallery', visible: true, label: 'Gallery' },
+        { id: 'local-recos', visible: true, label: 'Local favorites' },
+        { id: 'other-listings', visible: true, label: 'Other Listings' }
+      ]
+    },
+
+    content: {
+      'home-details': {
+        previewItems: [
+          { icon: '📶', label: 'Wi-Fi network', val: 'RiversideGuest' },
+          { icon: '🔑', label: 'Password', val: 'portland22' },
+          { icon: '🕐', label: 'Check-out', val: '11:00 AM' },
+          { icon: '🛗', label: 'Elevator', val: 'Code 44 to 3rd floor' },
+          { icon: '🗝️', label: 'Door code', val: '1071*' },
+          { icon: '🚗', label: 'Parking', val: 'Permit in kitchen drawer' }
+        ],
+        fullItems: [
+          { icon: '📶', label: 'Wi-Fi network', val: 'RiversideGuest' },
+          { icon: '🔑', label: 'Password', val: 'portland22' },
+          { icon: '🕐', label: 'Check-out', val: '11:00 AM' },
+          { icon: '🛗', label: 'Elevator', val: 'Code 44 to 3rd floor' },
+          { icon: '🗝️', label: 'Door code', val: '1071*' },
+          { icon: '🚗', label: 'Parking', val: 'Permit in kitchen drawer' },
+          { icon: '🌡️', label: 'Thermostat', val: 'Ecobee — 70°F default' },
+          { icon: '📺', label: 'TV', val: 'Apple TV — sign in with your own' },
+          { icon: '🧺', label: 'Laundry', val: 'Shared machines, basement (free)' },
+          { icon: '🗑️', label: 'Trash', val: 'Chute at end of hall' },
+          { icon: '☕', label: 'Coffee', val: 'Beans from Tandem in the freezer' },
+          { icon: '☎️', label: 'Emergency', val: '911 — address by the door' }
+        ]
+      },
+      'house-rules': {
+        rules: [
+          'No smoking anywhere in the building — balcony included',
+          'Quiet hours after 10pm — the walls are old and thin',
+          'No parties or events — this is a residential building',
+          'Please break down boxes before using the recycling chute',
+          'Keep the key fob with you — the lobby door locks automatically',
+          'Wipe down the espresso machine after use',
+          'Street parking is permit-only; use the permit provided',
+          'Water plants on the windowsill if you stay more than 3 nights',
+          'Please run the dishwasher before checkout',
+          'Report any issues — we are a 10-minute walk away'
+        ],
+        previewCount: 4
+      },
+      'shop': {
+        title: 'Love something here?',
+        subtitle: 'The loft is styled with a few of our favorite local and design pieces — all available to buy.',
+        items: [
+          { img: pourOverImg, name: 'Fellow Ode Coffee Grinder', price: '$345.00' },
+          { img: velvetPillowImg, name: 'Brahms Mount Cotton Throw', price: '$185.00' },
+          { emoji: '🍺', name: 'Allagash Glassware Set (4)', price: '$48.00' },
+          { img: kitchenImg, name: 'Lodge Enameled Dutch Oven', price: '$79.95' },
+          { emoji: '🖼️', name: 'Portland Head Light Art Print', price: '$58.00', hiddenPreview: true },
+          { emoji: '🕯️', name: 'Portland Trading Co. Candle', price: '$42.00', hiddenPreview: true },
+          { img: deckViewImg, name: 'Woven Seagrass Basket', price: '$64.00', hiddenPreview: true },
+          { emoji: '🧂', name: 'Maine Sea Salt Sampler', price: '$28.00', hiddenPreview: true }
+        ]
+      },
+      'about-hosts': {
+        hostNames: 'Mara',
+        portrait: hostPortraitImg,
+        shortBio: "I'm a graphic designer who fell for Portland's brick-and-water charm and turned this old mill loft into a little creative retreat.",
+        longBioParagraphs: [
+          "I moved to Portland from Brooklyn in 2019 for a slower pace and a shorter walk to the water — and never looked back.",
+          "This loft sits in a converted 1890s mill building. I kept the original brick and beams and filled the rest with work from Maine makers I love.",
+          "When I'm not designing, I'm chasing the best oysters in town, biking the Eastern Prom, or hunting for vinyl on Congress Street."
+        ],
+        favorites: [
+          { icon: '🦞', label: 'Go-to Order', val: 'Eventide brown butter roll' },
+          { icon: '🚲', label: 'Morning Loop', val: 'Eastern Promenade trail' },
+          { icon: '🎶', label: 'Record Shop', val: 'Moody Lords' },
+          { icon: '☕', label: 'Coffee', val: 'Tandem on Congress' }
+        ],
+        lifestyleImages: [
+          { src: breweryImg, alt: 'Riverside brewery district', span: true },
+          { src: pourOverImg, alt: 'Morning coffee' },
+          { src: kitchenImg, alt: 'Loft kitchen' }
+        ]
+      },
+      'gallery': {
+        images: [
+          { src: breweryImg, alt: 'The riverside mill district', span: true },
+          { src: kitchenImg, alt: 'Open loft kitchen' },
+          { src: velvetPillowImg, alt: 'Reading nook' },
+          { src: deckViewImg, alt: 'View from the windows' },
+          { src: pourOverImg, alt: 'Coffee corner' }
+        ]
+      },
+      'local-recos': {
+        items: [
+          { icon: '🦪', name: 'Eventide Oyster Co.', desc: 'The Portland classic — get a dozen and the famous roll. 4 min walk.', tag: 'Must-eat' },
+          { icon: '🍩', name: 'The Holy Donut', desc: 'Maine potato donuts. The dark chocolate sea salt sells out fast.', tag: 'Breakfast' },
+          { icon: '🍺', name: 'Allagash Brewing', desc: 'Free tours and tastings of the famous White. Short drive or bike.', tag: 'Brewery' },
+          { icon: '🚲', name: 'Eastern Promenade', desc: 'Waterfront trail with island views. Rent a bike on Commercial St.', tag: 'Outdoors', hiddenPreview: true },
+          { icon: '🛒', name: 'Harbor Fish Market', desc: 'Buy lobster off the boat to cook in the loft. 6 min walk.', tag: 'Groceries', hiddenPreview: true },
+          { icon: '🎨', name: 'Portland Museum of Art', desc: 'Wyeth and Homer collections. Free on Friday evenings.', tag: 'Culture', hiddenPreview: true },
+          { icon: '🌅', name: 'Portland Head Light', desc: 'The iconic lighthouse in Cape Elizabeth. 15 min drive.', tag: 'Day trip', hiddenPreview: true },
+          { icon: '🍦', name: 'Mount Desert Island Ice Cream', desc: 'Adventurous flavors (try the blueberry basil). 5 min walk.', tag: 'Local gem', hiddenPreview: true }
+        ]
+      },
+      'other-listings': {
+        properties: [
+          { img: tinyHomeImg, name: 'The Littleton Tiny Home', loc: 'White Mountains, NH', rating: '★ 4.97 · 83 reviews', price: 'From $129 / night' },
+          { img: deckViewImg, name: 'The Summit Cabin', loc: 'Lincoln, NH', rating: '★ 4.98 · 42 reviews', price: 'From $189 / night' },
+          { img: breweryImg, name: 'The Riverside Loft', loc: 'Portland, ME', rating: '★ 4.93 · 61 reviews', price: 'From $145 / night' }
+        ]
+      },
+      'direct-booking': {
+        badge: 'Coming back to Portland?',
+        title: 'Book Your Next Stay Direct',
+        sub: 'Save 12% when you book the loft with us directly — no platform service fees',
+        btnText: 'Book direct & save 12%'
+      },
+      'guestbook': {
+        // Guestbook posts are managed in GuestView's local state for now.
+      }
+    }
+  },
+
+  'The Summit Cabin': {
+    name: 'The Summit Cabin',
+    location: 'Lincoln, New Hampshire',
+    heroImage: deckViewImg,
+    hostNames: 'Tom & Dana',
+    accessCode: 'summit23',
+
+    layouts: {
+      unlocked: [
+        { id: 'home-details', visible: true, label: 'Your home details' },
+        { id: 'house-rules', visible: true, label: 'House rules' },
+        { id: 'shop', visible: true, label: 'Shop your stay' },
+        { id: 'about-hosts', visible: true, label: 'Your Hosts' },
+        { id: 'guestbook', visible: true, label: 'Virtual guestbook' },
+        { id: 'direct-booking', visible: true, label: 'Direct Booking' },
+        { id: 'gallery', visible: true, label: 'Gallery' },
+        { id: 'local-recos', visible: true, label: 'Local favorites' },
+        { id: 'other-listings', visible: true, label: 'Our other places' }
+      ],
+      booking: [
+        { id: 'direct-booking', visible: true, label: 'Direct Booking' },
+        { id: 'guestbook', visible: true, label: 'Virtual guestbook' },
+        { id: 'about-hosts', visible: true, label: 'Your Hosts' },
+        { id: 'gallery', visible: true, label: 'Gallery' },
+        { id: 'local-recos', visible: true, label: 'Local favorites' },
+        { id: 'other-listings', visible: true, label: 'Other Listings' }
+      ]
+    },
+
+    content: {
+      'home-details': {
+        previewItems: [
+          { icon: '📶', label: 'Wi-Fi network', val: 'SummitCabin' },
+          { icon: '🔑', label: 'Password', val: 'summit23' },
+          { icon: '🕐', label: 'Check-out', val: '10:00 AM' },
+          { icon: '🚗', label: 'Parking', val: 'Plowed driveway, 2 cars' },
+          { icon: '🗝️', label: 'Door code', val: '7714#' },
+          { icon: '🔥', label: 'Wood stove', val: 'Firewood on the porch' }
+        ],
+        fullItems: [
+          { icon: '📶', label: 'Wi-Fi network', val: 'SummitCabin' },
+          { icon: '🔑', label: 'Password', val: 'summit23' },
+          { icon: '🕐', label: 'Check-out', val: '10:00 AM' },
+          { icon: '🚗', label: 'Parking', val: 'Plowed driveway, 2 cars' },
+          { icon: '🗝️', label: 'Door code', val: '7714#' },
+          { icon: '🔥', label: 'Wood stove', val: 'Firewood on the porch' },
+          { icon: '🛁', label: 'Hot tub', val: 'On the back deck — cover when done' },
+          { icon: '🌡️', label: 'Thermostat', val: 'Baseboard dials per room' },
+          { icon: '📺', label: 'TV', val: 'Smart TV — Netflix logged in' },
+          { icon: '🎿', label: 'Ski storage', val: 'Rack and boot dryer in mudroom' },
+          { icon: '🧺', label: 'Laundry', val: 'Washer/dryer in mudroom' },
+          { icon: '☎️', label: 'Emergency', val: '911 — nearest hospital 12 min' }
+        ]
+      },
+      'house-rules': {
+        rules: [
+          'No smoking inside — covered porch is fine',
+          'Wipe down ski/snowboard gear before bringing it inside',
+          'Hot tub: shower first, replace the cover, kids supervised',
+          'Quiet hours after 10pm — sound carries between cabins',
+          'Keep the wood stove damper as posted; never leave it unattended',
+          'Pets welcome with prior approval — keep them off the beds',
+          'Knock snow off boots in the mudroom, not the living room',
+          'Turn thermostats to 55°F (not off) when you leave',
+          'Please bag and bring trash to the bear-proof bin outside',
+          'Report any damage — honest guests always get our 5 stars back'
+        ],
+        previewCount: 4
+      },
+      'shop': {
+        title: 'Love something here?',
+        subtitle: 'Everything that makes the cabin cozy is available to buy — we earn a small commission at no cost to you.',
+        items: [
+          { img: velvetPillowImg, name: 'Pendleton Wool Throw', price: '$199.00' },
+          { img: kitchenImg, name: 'Lodge Cast Iron Skillet Set', price: '$89.95' },
+          { emoji: '🥾', name: 'Tubbs Snowshoes (pair)', price: '$159.95' },
+          { img: pourOverImg, name: 'Stanley Stay-Hot Camp Mug', price: '$30.00' },
+          { emoji: '🔦', name: 'Goal Zero Lantern', price: '$59.95', hiddenPreview: true },
+          { emoji: '🧦', name: 'Darn Tough Wool Socks (3)', price: '$72.00', hiddenPreview: true },
+          { img: deckViewImg, name: 'Folding Adirondack Chair', price: '$229.00', hiddenPreview: true },
+          { emoji: '🍫', name: "S'mores Kit — Local Maple", price: '$24.00', hiddenPreview: true }
+        ]
+      },
+      'about-hosts': {
+        hostNames: 'Tom & Dana',
+        portrait: hostPortraitImg,
+        shortBio: "We're lifelong New Englanders and certified ski bums who built this cabin so other people could fall for the Whites like we did.",
+        longBioParagraphs: [
+          "We met in a lift line at Loon Mountain in 2011 and have been chasing snow (and fall foliage) together ever since.",
+          "We built the Summit Cabin with our own hands over two summers — every beam has a story and at least one of Tom's band-aids on it.",
+          "Off-season you'll find us hiking the Kancamagus, paddling on Echo Lake, or arguing about the best maple syrup grade (it's Grade A Dark)."
+        ],
+        favorites: [
+          { icon: '🎿', label: 'Home Mountain', val: 'Loon — South Peak' },
+          { icon: '🥾', label: 'Favorite Hike', val: 'Mount Pemigewasset' },
+          { icon: '🍺', label: 'Après Spot', val: 'Woodstock Inn Brewery' },
+          { icon: '🥞', label: 'Breakfast', val: "Sunny Day Diner" }
+        ],
+        lifestyleImages: [
+          { src: deckViewImg, alt: 'View from the deck', span: true },
+          { src: tinyHomeImg, alt: 'The cabin in the woods' },
+          { src: kitchenImg, alt: 'Cabin kitchen' }
+        ]
+      },
+      'gallery': {
+        images: [
+          { src: deckViewImg, alt: 'Mountain views from the deck', span: true },
+          { src: tinyHomeImg, alt: 'The cabin exterior' },
+          { src: kitchenImg, alt: 'Cozy cabin kitchen' },
+          { src: breweryImg, alt: 'Town of Lincoln nearby' },
+          { src: pourOverImg, alt: 'Morning by the stove' }
+        ]
+      },
+      'local-recos': {
+        items: [
+          { icon: '🎿', name: 'Loon Mountain Resort', desc: 'World-class skiing in winter, gondola rides in summer. 8 min drive.', tag: 'Adventure' },
+          { icon: '🥞', name: 'Sunny Day Diner', desc: 'Classic chrome diner — get the gingerbread pancakes. 6 min away.', tag: 'Best breakfast' },
+          { icon: '🍺', name: 'Woodstock Inn Brewery', desc: 'Great après beers and burgers in nearby North Woodstock.', tag: 'Dinner' },
+          { icon: '🌊', name: 'Flume Gorge', desc: 'Stunning boardwalk through a granite gorge. 15 min drive.', tag: 'Hiking', hiddenPreview: true },
+          { icon: '🛒', name: 'Lincoln Village Store', desc: 'Groceries, firewood, and trail snacks. 7 min drive.', tag: 'Groceries', hiddenPreview: true },
+          { icon: '🚗', name: 'Kancamagus Highway', desc: 'One of the best scenic drives in the country, especially in fall.', tag: 'Scenic', hiddenPreview: true },
+          { icon: '🕳️', name: 'Lost River Gorge', desc: 'Caves and boardwalks the kids love. 20 min drive.', tag: 'Family', hiddenPreview: true },
+          { icon: '🍦', name: "Bart's Beach House (seasonal)", desc: 'Lobster rolls and soft serve by the river. Summer only.', tag: 'Local gem', hiddenPreview: true }
+        ]
+      },
+      'other-listings': {
+        properties: [
+          { img: tinyHomeImg, name: 'The Littleton Tiny Home', loc: 'White Mountains, NH', rating: '★ 4.97 · 83 reviews', price: 'From $129 / night' },
+          { img: breweryImg, name: 'The Riverside Loft', loc: 'Portland, ME', rating: '★ 4.93 · 61 reviews', price: 'From $145 / night' },
+          { img: deckViewImg, name: 'The Summit Cabin', loc: 'Lincoln, NH', rating: '★ 4.98 · 42 reviews', price: 'From $189 / night' }
+        ]
+      },
+      'direct-booking': {
+        badge: 'Planning a return trip?',
+        title: 'Book Your Next Stay Direct',
+        sub: 'Save 12% on your next cabin stay — no service fees when you book with us directly',
+        btnText: 'Book direct & save 12%'
+      },
+      'guestbook': {
+        // Guestbook posts are managed in GuestView's local state for now.
       }
     }
   }

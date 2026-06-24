@@ -5,7 +5,7 @@ import { defaultPropertiesData } from './data/defaultProperties'
 
 // Bump the version suffix whenever the shape of the stored data changes in a
 // way that older payloads can't satisfy.
-const STORAGE_KEY = 'str.rest:properties:v1'
+const STORAGE_KEY = 'str.rest:properties:v2'
 
 function loadProperties() {
   try {
@@ -20,6 +20,11 @@ function loadProperties() {
 function App() {
   const [activeView, setActiveView] = useState('host')
   const [propertiesData, setPropertiesData] = useState(loadProperties)
+
+  const propertyNames = Object.keys(propertiesData)
+  const [activeProperty, setActiveProperty] = useState(propertyNames[0])
+  // Guard against a stored/active name that no longer exists in the data.
+  const guestProperty = propertyNames.includes(activeProperty) ? activeProperty : propertyNames[0]
 
   // Persist host edits so they survive a refresh. Note: seed image URLs are
   // build-hashed, so demo images saved by a returning visitor may break after
@@ -47,11 +52,23 @@ function App() {
         >
           Guest
         </button>
+        {activeView === 'guest' && (
+          <select
+            className="property-picker"
+            value={guestProperty}
+            onChange={e => setActiveProperty(e.target.value)}
+            aria-label="Preview property"
+          >
+            {propertyNames.map(name => (
+              <option key={name} value={name}>{name}</option>
+            ))}
+          </select>
+        )}
       </div>
 
       {activeView === 'host' ?
         <HostDashboard propertiesData={propertiesData} setPropertiesData={setPropertiesData} /> :
-        <GuestView propertiesData={propertiesData} />
+        <GuestView propertiesData={propertiesData} propertyName={guestProperty} />
       }
     </div>
   )

@@ -43,9 +43,14 @@ export default function GuestView({
   previewLayoutType = 'unlocked', 
   onMoveSection, 
   onToggleVisibility, 
-  onEditSection 
+  onEditSection,
+  propertyName
 }) {
-  const propData = (propertiesData && propertiesData["The Littleton Tiny Home"]) || {};
+  // Render the requested property, falling back to the first one available.
+  const activeKey = (propertyName && propertiesData?.[propertyName])
+    ? propertyName
+    : (propertiesData ? Object.keys(propertiesData)[0] : undefined);
+  const propData = (propertiesData && propertiesData[activeKey]) || {};
   const contentData = propData.content || {};
 
   const [internalViewState, setViewState] = useState('initial');
@@ -131,7 +136,8 @@ export default function GuestView({
 
   const handlePasscodeSubmit = (e) => {
     e.preventDefault();
-    if (passcode.toLowerCase() === 'mountains24') {
+    const accessCode = (propData.accessCode || 'mountains24').toLowerCase();
+    if (passcode.toLowerCase() === accessCode) {
       setGuestName(null);
       setViewState('unlocked');
       setError(false);
@@ -377,7 +383,7 @@ export default function GuestView({
                 onChange={e => setPasscode(e.target.value)}
                 style={{ textAlign: 'center', letterSpacing: '2px', fontSize: '18px', padding: '16px', background: error ? '#fef2f2' : 'white', borderColor: error ? '#ef4444' : '#e8e2d9' }}
               />
-              {error && <div style={{ color: '#ef4444', fontSize: '12px', textAlign: 'center', marginTop: '8px' }}>Incorrect passcode. Try 'mountains24' or your custom code.</div>}
+              {error && <div style={{ color: '#ef4444', fontSize: '12px', textAlign: 'center', marginTop: '8px' }}>Incorrect passcode. Please use the code your host sent you.</div>}
               <button type="submit" className="db-btn" style={{ width: '100%', marginTop: '16px' }}>Unlock</button>
             </form>
             <button onClick={() => setViewState('booking')} style={{ background: 'none', border: 'none', color: '#6b6559', fontSize: '14px', marginTop: '24px', cursor: 'pointer', textDecoration: 'underline' }}>Return to booking view</button>

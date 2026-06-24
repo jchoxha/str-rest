@@ -825,8 +825,9 @@ function SiteBuilderView({ property, propertiesData, setPropertiesData }) {
       <div style={{ maxWidth: '400px', margin: '0 auto', border: '12px solid #1e293b', borderRadius: '40px', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', height: '800px', position: 'relative' }}>
          <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '120px', height: '24px', background: '#1e293b', borderBottomLeftRadius: '12px', borderBottomRightRadius: '12px', zIndex: 50 }}></div>
          <div style={{ height: '100%', overflowY: 'auto', background: '#f5f1ea', position: 'relative' }}>
-           <GuestView 
+           <GuestView
              propertiesData={propertiesData}
+             propertyName={property}
              isPreviewMode={true}
              previewLayoutType={activeLayout}
              onMoveSection={(type, index, dir) => moveItem(index, dir)}

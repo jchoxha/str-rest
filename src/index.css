@@ -76,6 +76,24 @@ body {
   color: #fff
 }
 
+.property-picker {
+  margin-top: 4px;
+  max-width: 84px;
+  padding: 5px 6px;
+  font-size: 9px;
+  font-weight: 500;
+  border: 1px solid rgba(255, 255, 255, .15);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, .08);
+  color: #fff;
+  cursor: pointer;
+  outline: none;
+}
+
+.property-picker option {
+  color: #0f172a;
+}
+
 /* HOST DASHBOARD */
 .host-layout {
   display: flex;
