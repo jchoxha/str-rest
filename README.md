@@ -1,16 +1,52 @@
-# React + Vite
+# str.rest
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Digital guidebooks and direct-booking pages for short-term rental (STR) hosts.
 
-Currently, two official plugins are available:
+Hosts build a guest-facing page — home details, house rules, a "shop your
+stay" affiliate storefront, host bios, a photo gallery, local recommendations,
+a virtual guestbook, and a direct-booking call to action — and manage it all
+from a host dashboard. Guests open a single link for everything they need
+during their stay.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Tech stack
 
-## React Compiler
+- **React 19** + **Vite** (SPA, no backend yet)
+- **Tailwind CSS v4**
+- **Framer Motion**, **lucide-react**
+- State persisted client-side in `localStorage`
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Getting started
 
-## Expanding the ESLint configuration
+```bash
+npm install
+npm run dev      # start the dev server
+npm run build    # production build to dist/
+npm run preview  # preview the production build
+npm run lint     # run ESLint
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Project structure
+
+```
+src/
+  App.jsx                     Top-level Host/Guest toggle + app state
+  components/
+    HostDashboard.jsx         Host admin: dashboard, analytics, site builder, storefront
+    GuestView.jsx             Public guest-facing page (also rendered as the builder preview)
+  data/
+    defaultProperties.js      Seed content for the demo property
+```
+
+## Deployment
+
+Pushing to `main` builds the app and deploys it to **GitHub Pages** via
+[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml). Pages must be
+configured to deploy from **GitHub Actions** (Settings → Pages → Source).
+
+Vite is configured with a relative `base` (`./`), so the build works from any
+sub-path without hardcoding the repository name.
+
+## Status
+
+Early development — evolving from a UI prototype into a working app. Data is
+currently client-side only.
