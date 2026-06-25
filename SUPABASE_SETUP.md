@@ -55,3 +55,51 @@ two repository secrets:
 
 The deploy workflow injects them at build time. (The anon key is public-safe;
 security is enforced by Row-Level Security.)
+
+---
+
+# Phase 0: billing, gating & iCal
+
+## 7. Run migration 0002
+In the SQL Editor, paste and run the contents of
+[`supabase/migrations/0002_billing_ical.sql`](supabase/migrations/0002_billing_ical.sql).
+This adds the `subscriptions` table + plan gating (`plan_for`, free-plan
+property-limit trigger), `properties.ical_urls` + `views`, and updates
+`get_public_property` to bump views and report the badge flag.
+
+## 8. Stripe (subscriptions)
+1. Create a Stripe account; in **test mode**, add a Product "str.rest Pro" with a
+   recurring **Price**. Copy the **price id** (`price_…`) and your **secret key**
+   (`sk_test_…`).
+2. Deploy the Edge Functions (Supabase CLI, or paste each in the dashboard under
+   **Edge Functions**):
+   ```bash
+   supabase functions deploy create-checkout
+   supabase functions deploy create-portal
+   supabase functions deploy stripe-webhook --no-verify-jwt
+   supabase functions deploy ical-availability --no-verify-jwt
+   ```
+   `stripe-webhook` and `ical-availability` **must have Verify JWT OFF** (Stripe
+   and anonymous guests can't send a Supabase JWT).
+3. Set function secrets:
+   ```bash
+   supabase secrets set STRIPE_SECRET_KEY=sk_test_... STRIPE_PRICE_PRO=price_...
+   ```
+4. In Stripe → **Developers → Webhooks**, add an endpoint pointing at the
+   deployed `stripe-webhook` URL, subscribe to `checkout.session.completed` and
+   `customer.subscription.*`, then copy its **signing secret** and set it:
+   ```bash
+   supabase secrets set STRIPE_WEBHOOK_SECRET=whsec_...
+   ```
+5. In Stripe → **Customer Portal**, activate the portal (so "Manage billing"
+   works).
+
+## 9. Custom domain (str.rest) — do when DNS is ready
+This is a coordinated cutover (the app's Vite `base` moves from `/str-rest/` to
+`/`). Order: add DNS, then flip the code + set the repo's Pages custom domain.
+1. At your registrar, point apex `str.rest` at GitHub Pages — A records
+   `185.199.108.153/109/110/111` (optionally `www` CNAME → `jchoxha.github.io`).
+2. Flip `vite.config.js` base to `/`, `public/404.html` `pathSegmentsToKeep` to
+   `0`, add `public/CNAME` = `str.rest` (ask the assistant — ~2 min).
+3. Repo → **Settings → Pages → Custom domain** = `str.rest`; enable HTTPS.
+4. Add `https://str.rest/` to Supabase **Auth → URL Configuration → Redirect URLs**.

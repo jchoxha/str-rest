@@ -107,6 +107,18 @@ export async function uploadImage(file, propertyId = 'misc') {
 
 // ---- Guest (public, via security-definer RPCs) -------------------------------
 
+// Busy date ranges from the property's iCal feeds (Pro). Returns [] on any
+// failure so the booking UI degrades gracefully.
+export async function fetchAvailability(slug) {
+  try {
+    const { data, error } = await supabase.functions.invoke('ical-availability', { body: { slug } })
+    if (error) return []
+    return Array.isArray(data?.busy) ? data.busy : []
+  } catch {
+    return []
+  }
+}
+
 export async function fetchPublicProperty(slug) {
   const { data, error } = await supabase.rpc('get_public_property', { p_slug: slug })
   if (error) throw error

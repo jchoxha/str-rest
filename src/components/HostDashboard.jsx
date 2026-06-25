@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import GuestView from './GuestView'
 import { useAuth } from '../auth/auth-context'
+import { usePlan } from '../hooks/usePlan'
+import { startCheckout, openPortal } from '../lib/billing'
 import { listMyProperties, createProperty, updateProperty, deleteProperty, uploadImage } from '../lib/properties'
 
 function SidebarItem({ label, icon, current, onClick, onSelect, extraStyle }) {
@@ -23,6 +25,7 @@ function SidebarItem({ label, icon, current, onClick, onSelect, extraStyle }) {
 
 export default function HostDashboard() {
   const { user, signOut } = useAuth()
+  const { isPro } = usePlan()
   const [properties, setProperties] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedId, setSelectedId] = useState(null)
@@ -56,6 +59,13 @@ export default function HostDashboard() {
   }
 
   const handleCreate = async () => {
+    // Free plan is limited to one property (the DB also enforces this).
+    if (!isPro && properties.length >= 1) {
+      if (window.confirm('The free plan is limited to 1 property. Upgrade to Pro for unlimited properties — continue to checkout?')) {
+        try { await startCheckout() } catch (e) { alert(e.message) }
+      }
+      return
+    }
     try {
       const created = await createProperty({ name: 'New property' })
       setProperties(prev => [created, ...prev])
@@ -93,15 +103,11 @@ export default function HostDashboard() {
       case 'Site Builder':
         return <SiteBuilderView property={selectedProperty} onChange={updateSelected} />
       case 'Analytics':
-        return <AnalyticsView property={selectedProperty} />
+        return <AnalyticsView property={selectedProperty} isPro={isPro} />
       case 'Property Details':
-        return <PropertyView property={selectedProperty} onChange={updateSelected} onDelete={handleDelete} />
-      case 'Shop My Stay':
-        return <ShopView property={selectedProperty} />
-      case 'Add Products':
-        return <AddProductView property={selectedProperty} />
-      case 'Preferences':
-        return <PreferencesView property={selectedProperty} />
+        return <PropertyView property={selectedProperty} onChange={updateSelected} onDelete={handleDelete} isPro={isPro} />
+      case 'Account':
+        return <AccountBillingView isPro={isPro} email={user?.email} onSignOut={signOut} />
       case 'Dashboard':
       default:
         return <OverviewView property={selectedProperty} onChange={updateSelected} />
@@ -199,14 +205,8 @@ export default function HostDashboard() {
         </div>
         
         <div className="sb-section">
-          <div className="sb-label">Storefront</div>
-          <SidebarItem label="Shop My Stay" icon={IconShop} current={activeTab} onSelect={setActiveTab} />
-          <SidebarItem label="Add Products" icon={IconAddProduct} current={activeTab} onSelect={setActiveTab} />
-        </div>
-        
-        <div className="sb-section">
           <div className="sb-label">Settings</div>
-          <SidebarItem label="Preferences" icon={IconSettings} current={activeTab} onSelect={setActiveTab} />
+          <SidebarItem label="Account" icon={IconSettings} current={activeTab} onSelect={setActiveTab} />
         </div>
 
         <div className="sb-section" style={{ marginTop: 'auto' }}>
@@ -397,70 +397,44 @@ function OverviewView({ property, onChange }) {
   )
 }
 
-function AnalyticsView() {
+function UpgradeCard({ feature }) {
+  return (
+    <div className="dash-card" style={{ textAlign: 'center', padding: '40px' }}>
+      <div style={{ fontSize: 28, marginBottom: 8 }}>🔒</div>
+      <div style={{ fontSize: 16, fontWeight: 600, color: '#1e293b' }}>{feature} is a Pro feature</div>
+      <div style={{ fontSize: 13, color: '#64748b', margin: '8px 0 16px' }}>
+        Upgrade to unlock {feature.toLowerCase()}, unlimited properties, and remove the str.rest badge.
+      </div>
+      <button className="pub-btn" onClick={() => startCheckout().catch(e => alert(e.message))}>Upgrade to Pro</button>
+    </div>
+  )
+}
+
+function AnalyticsView({ property, isPro }) {
   return (
     <>
       <div className="page-header">
         <div>
           <div className="page-title">Analytics</div>
-          <div className="page-sub">Traffic and conversions for the last 30 days</div>
+          <div className="page-sub">{isPro ? property.name : 'See how your guest page is performing'}</div>
         </div>
       </div>
-      
-      <div className="dash-card" style={{marginBottom: '24px'}}>
-        <div className="dash-card-title">Traffic Overview</div>
-        <div style={{height: '200px', display: 'flex', alignItems: 'flex-end', gap: '12px', marginTop: '20px'}}>
-          {[40, 70, 45, 90, 110, 60, 130].map((h, i) => (
-            <div key={i} style={{flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px'}}>
-              <div style={{width: '100%', height: `${h}px`, background: '#3b82f6', borderRadius: '4px 4px 0 0', opacity: i === 6 ? 1 : 0.4}}></div>
-              <span style={{fontSize: '10px', color: '#94a3b8'}}>Day {i+1}</span>
-            </div>
-          ))}
+      {isPro ? (
+        <div className="metrics">
+          <div className="metric-card">
+            <div className="metric-label">Guest page views</div>
+            <div className="metric-val">{(property.views ?? 0).toLocaleString()}</div>
+            <div className="metric-change">{property.published ? 'Live' : 'Not published yet'}</div>
+          </div>
         </div>
-      </div>
-
-      <div className="dash-grid">
-         <div className="dash-card">
-           <div className="dash-card-title">Traffic Sources</div>
-           <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
-             <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '13px', borderBottom: '0.5px solid #f1f5f9', paddingBottom: '8px'}}>
-               <span style={{color: '#1e293b'}}>Direct Traffic</span>
-               <span style={{fontWeight: 500}}>4,204</span>
-             </div>
-             <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '13px', borderBottom: '0.5px solid #f1f5f9', paddingBottom: '8px'}}>
-               <span style={{color: '#1e293b'}}>Airbnb Message Links</span>
-               <span style={{fontWeight: 500}}>1,043</span>
-             </div>
-             <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '13px'}}>
-               <span style={{color: '#1e293b'}}>Instagram Bio</span>
-               <span style={{fontWeight: 500}}>392</span>
-             </div>
-           </div>
-         </div>
-
-         <div className="dash-card">
-           <div className="dash-card-title">Most Clicked Items</div>
-           <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
-             <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '13px', borderBottom: '0.5px solid #f1f5f9', paddingBottom: '8px'}}>
-               <span style={{color: '#1e293b'}}>Fellow Stagg EKG Kettle</span>
-               <span style={{color: '#16a34a'}}>4.8% CTR</span>
-             </div>
-             <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '13px', borderBottom: '0.5px solid #f1f5f9', paddingBottom: '8px'}}>
-               <span style={{color: '#1e293b'}}>Polly's Pancake Parlor (Maps)</span>
-               <span style={{color: '#16a34a'}}>4.2% CTR</span>
-             </div>
-             <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '13px'}}>
-               <span style={{color: '#1e293b'}}>Parachute Linen Sheets</span>
-               <span style={{color: '#16a34a'}}>3.9% CTR</span>
-             </div>
-           </div>
-         </div>
-      </div>
+      ) : (
+        <UpgradeCard feature="Analytics" />
+      )}
     </>
   )
 }
 
-function PropertyView({ property, onChange, onDelete }) {
+function PropertyView({ property, onChange, onDelete, isPro }) {
   const [uploading, setUploading] = useState(false)
   const field = { width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', boxSizing: 'border-box' }
   const lbl = { fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }
@@ -530,185 +504,78 @@ function PropertyView({ property, onChange, onDelete }) {
           </div>
         </div>
       </div>
-    </>
-  )
-}
 
-function ShopView() {
-  return (
-    <>
-      <div className="page-header">
-        <div>
-          <div className="page-title">Shop My Stay</div>
-          <div className="page-sub">Manage your affiliate storefront</div>
-        </div>
-        <button className="pub-btn">+ New item</button>
-      </div>
-
-      <div className="dash-card">
-        <table style={{width: '100%', textAlign: 'left', borderCollapse: 'collapse'}}>
-          <thead>
-            <tr style={{borderBottom: '1px solid #e2e8f0', color: '#94a3b8', fontSize: '11px', textTransform: 'uppercase'}}>
-              <th style={{paddingBottom: '12px', fontWeight: 500}}>Product</th>
-              <th style={{paddingBottom: '12px', fontWeight: 500}}>Price</th>
-              <th style={{paddingBottom: '12px', fontWeight: 500}}>Clicks</th>
-              <th style={{paddingBottom: '12px', fontWeight: 500}}>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {[
-              { icon: '☕', name: 'Fellow Stagg EKG', price: '$165.00', clicks: 142, status: 'Active' },
-              { icon: '🛏️', name: 'Parachute Linen Pillow', price: '$89.00', clicks: 84, status: 'Active' },
-              { icon: '🕯️', name: 'Cedar Candle', price: '$36.00', clicks: 51, status: 'Hidden' },
-            ].map((p, i) => (
-              <tr key={i} style={{borderBottom: '1px solid #f1f5f9'}}>
-                <td style={{padding: '16px 0'}}>
-                   <div className="product-row" style={{padding: 0, border: 'none'}}>
-                     <div className="prod-img">{p.icon}</div>
-                     <span className="prod-name">{p.name}</span>
-                   </div>
-                </td>
-                <td style={{padding: '16px 0', fontSize: '13px', color: '#1e293b'}}>{p.price}</td>
-                <td style={{padding: '16px 0', fontSize: '13px', color: '#1e293b'}}>{p.clicks}</td>
-                <td style={{padding: '16px 0', fontSize: '13px'}}>
-                  <span style={{background: p.status === 'Active' ? '#dcfce7' : '#f1f5f9', color: p.status === 'Active' ? '#166534' : '#64748b', padding: '4px 8px', borderRadius: '4px', fontSize: '11px'}}>
-                    {p.status}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="dash-card" style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '820px', marginTop: '24px' }}>
+        <div className="dash-card-title">Calendar sync (iCal)</div>
+        {isPro ? (
+          <>
+            <div style={{ fontSize: '12px', color: '#64748b' }}>
+              Paste your Airbnb / Vrbo / Booking.com "export calendar" (iCal) links, one per line. Busy dates from these feeds show on your booking page.
+            </div>
+            <textarea
+              key={property.id}
+              defaultValue={(property.ical_urls || []).map(u => (typeof u === 'string' ? u : u?.url)).filter(Boolean).join('\n')}
+              onBlur={e => onChange({ ical_urls: e.target.value.split('\n').map(s => s.trim()).filter(Boolean) })}
+              placeholder="https://www.airbnb.com/calendar/ical/12345.ics"
+              style={{ width: '100%', minHeight: '90px', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '12px', fontFamily: 'monospace', boxSizing: 'border-box' }}
+            />
+            <div style={{ fontSize: '11px', color: '#94a3b8' }}>Saved when you click away from the box.</div>
+          </>
+        ) : (
+          <div style={{ fontSize: '13px', color: '#64748b' }}>
+            🔒 Calendar sync is a Pro feature.{' '}
+            <button onClick={() => startCheckout().catch(e => alert(e.message))} style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>Upgrade to Pro</button>
+          </div>
+        )}
       </div>
     </>
   )
 }
 
-function AddProductView() {
+function AccountBillingView({ isPro, email, onSignOut }) {
   return (
     <>
       <div className="page-header">
         <div>
-          <div className="page-title">Add Product</div>
-          <div className="page-sub">List a new item on your storefront</div>
+          <div className="page-title">Account & Billing</div>
+          <div className="page-sub">Manage your plan and account</div>
         </div>
-        <button className="pub-btn">Publish to Store</button>
       </div>
 
       <div className="dash-grid">
-        <div className="dash-card">
-          <div className="dash-card-title">Product Details</div>
-          <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
-            <div>
-              <label style={{fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px'}}>Affiliate Link (Amazon API Supported)</label>
-              <input type="text" placeholder="https://amazon.com/dp/..." style={{width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px'}} />
-              <div style={{fontSize: '10px', color: '#3b82f6', marginTop: '6px', cursor: 'pointer'}}>Auto-fill details from Link</div>
-            </div>
-            <div style={{display: 'flex', gap: '16px'}}>
-              <div style={{flex: 1}}>
-                <label style={{fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px'}}>Display Name</label>
-                <input type="text" placeholder="Product name" style={{width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px'}} />
-              </div>
-              <div style={{width: '100px'}}>
-                <label style={{fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px'}}>Price</label>
-                <input type="text" placeholder="$0.00" style={{width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px'}} />
-              </div>
-            </div>
+        <div className="dash-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div className="dash-card-title">Your plan</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '22px', fontWeight: 700, color: '#1e293b' }}>{isPro ? 'Pro' : 'Free'}</span>
+            <span style={{ background: isPro ? '#dcfce7' : '#f1f5f9', color: isPro ? '#166534' : '#64748b', padding: '3px 10px', borderRadius: '999px', fontSize: '12px', fontWeight: 600 }}>
+              {isPro ? 'Active' : 'No subscription'}
+            </span>
           </div>
+          <div style={{ fontSize: '13px', color: '#64748b' }}>
+            {isPro
+              ? 'Unlimited properties, no str.rest badge, iCal calendar sync, and analytics.'
+              : 'Free includes 1 property. Upgrade to Pro for unlimited properties, no badge, iCal sync, and analytics.'}
+          </div>
+          {isPro ? (
+            <button className="pub-btn" style={{ alignSelf: 'flex-start' }} onClick={() => openPortal().catch(e => alert(e.message))}>
+              Manage billing
+            </button>
+          ) : (
+            <button className="pub-btn" style={{ alignSelf: 'flex-start' }} onClick={() => startCheckout().catch(e => alert(e.message))}>
+              Upgrade to Pro
+            </button>
+          )}
         </div>
 
-        <div className="dash-card text-center" style={{display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '200px'}}>
-           <div style={{width: '60px', height: '60px', borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '12px'}}>
-             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-           </div>
-           <div style={{fontSize: '13px', fontWeight: 500, color: '#1e293b', marginBottom: '4px'}}>Upload Product Image</div>
-           <div style={{fontSize: '11px', color: '#94a3b8'}}>Drag and drop or click to browse</div>
-        </div>
-      </div>
-    </>
-  )
-}
-
-function PreferencesView() {
-  return (
-    <>
-      <div className="page-header">
-        <div>
-          <div className="page-title">Preferences</div>
-          <div className="page-sub">Manage your account settings</div>
-        </div>
-        <button className="pub-btn">Save changes</button>
-      </div>
-
-      <div className="dash-grid">
-        <div className="dash-card">
-          <div className="dash-card-title">Profile Settings</div>
-          <div style={{display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px'}}>
-             <div style={{width: '50px', height: '50px', borderRadius: '50%', background: '#0f172a', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 600}}>
-               A
-             </div>
-             <div>
-               <div style={{fontSize: '14px', fontWeight: 500, color: '#1e293b'}}>Alex & Jordan</div>
-               <div style={{fontSize: '11px', color: '#94a3b8', marginTop: '2px'}}>alex@str.rest</div>
-             </div>
-             <button style={{marginLeft: 'auto', padding: '6px 12px', background: '#f1f5f9', borderRadius: '6px', fontSize: '12px', fontWeight: 500}}>Edit</button>
+        <div className="dash-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div className="dash-card-title">Account</div>
+          <div>
+            <div style={{ fontSize: '11px', color: '#94a3b8' }}>Signed in as</div>
+            <div style={{ fontSize: '14px', color: '#1e293b', fontWeight: 500 }}>{email}</div>
           </div>
-
-          <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
-            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-               <div>
-                 <div style={{fontSize: '13px', color: '#1e293b', fontWeight: 500}}>Email Notifications</div>
-                 <div style={{fontSize: '11px', color: '#94a3b8'}}>Receive booking alerts and guest messages via email</div>
-               </div>
-               <div style={{width: '36px', height: '20px', borderRadius: '10px', background: '#3b82f6', position: 'relative'}}>
-                 <div style={{width: '16px', height: '16px', borderRadius: '50%', background: 'white', position: 'absolute', top: '2px', right: '2px'}}></div>
-               </div>
-            </div>
-            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-               <div>
-                 <div style={{fontSize: '13px', color: '#1e293b', fontWeight: 500}}>SMS Alerts</div>
-                 <div style={{fontSize: '11px', color: '#94a3b8'}}>Immediate text messages for direct bookings</div>
-               </div>
-               <div style={{width: '36px', height: '20px', borderRadius: '10px', background: '#e2e8f0', position: 'relative'}}>
-                 <div style={{width: '16px', height: '16px', borderRadius: '50%', background: 'white', position: 'absolute', top: '2px', left: '2px'}}></div>
-               </div>
-            </div>
-            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-               <div>
-                 <div style={{fontSize: '13px', color: '#1e293b', fontWeight: 500}}>Weekly Analytics Report</div>
-                 <div style={{fontSize: '11px', color: '#94a3b8'}}>Get a summary of your traffic every Monday</div>
-               </div>
-               <div style={{width: '36px', height: '20px', borderRadius: '10px', background: '#3b82f6', position: 'relative'}}>
-                 <div style={{width: '16px', height: '16px', borderRadius: '50%', background: 'white', position: 'absolute', top: '2px', right: '2px'}}></div>
-               </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="dash-card">
-          <div className="dash-card-title">Integrations</div>
-          <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
-            <div style={{border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px'}}>
-               <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px'}}>
-                 <div style={{fontSize: '14px', fontWeight: 600, color: '#1e293b'}}>Airbnb API</div>
-                 <span style={{background: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: '4px', fontSize: '10px'}}>Connected</span>
-               </div>
-               <div style={{fontSize: '12px', color: '#64748b'}}>Syncing 2 properties. Last sync: 14 mins ago.</div>
-            </div>
-            <div style={{border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px'}}>
-               <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px'}}>
-                 <div style={{fontSize: '14px', fontWeight: 600, color: '#1e293b'}}>Stripe (Direct Payments)</div>
-                 <span style={{background: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: '4px', fontSize: '10px'}}>Connected</span>
-               </div>
-               <div style={{fontSize: '12px', color: '#64748b'}}>Payouts active. Next payout: $280.00 on Jun 11.</div>
-            </div>
-            <div style={{border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px', borderStyle: 'dashed'}}>
-               <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'}}>
-                 <div style={{fontSize: '16px'}}>+</div>
-                 <div style={{fontSize: '13px', fontWeight: 500, color: '#3b82f6'}}>Connect VRBO API</div>
-               </div>
-            </div>
-          </div>
+          <button onClick={onSignOut} style={{ alignSelf: 'flex-start', padding: '8px 14px', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px', cursor: 'pointer' }}>
+            Sign out
+          </button>
         </div>
       </div>
     </>

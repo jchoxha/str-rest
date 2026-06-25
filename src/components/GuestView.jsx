@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import { fetchPublicProperty, unlockProperty, listPosts, addPost } from '../lib/properties'
+import { fetchPublicProperty, unlockProperty, listPosts, addPost, fetchAvailability } from '../lib/properties'
 
 function PreviewWrapper({ children, section, isPreviewMode, onMove, onToggle, onEdit, isFirst, isLast }) {
   if (!isPreviewMode) {
@@ -49,6 +49,67 @@ function toPost(row) {
   };
 }
 
+// Expand iCal busy ranges ({start, end} as YYYY-MM-DD, end exclusive per iCal)
+// into a Set of busy night date-strings.
+function busyDateSet(busy) {
+  const set = new Set();
+  for (const b of busy || []) {
+    if (!b?.start) continue;
+    const d = new Date(b.start + 'T00:00:00');
+    const end = new Date((b.end || b.start) + 'T00:00:00');
+    while (d < end) {
+      set.add(d.toISOString().slice(0, 10));
+      d.setDate(d.getDate() + 1);
+    }
+  }
+  return set;
+}
+
+// Read-only availability: current + next month, busy nights marked.
+function AvailabilityCalendar({ busy }) {
+  const set = busyDateSet(busy);
+  const today = new Date();
+  const months = [0, 1].map(off => new Date(today.getFullYear(), today.getMonth() + off, 1));
+  const todayStr = today.toISOString().slice(0, 10);
+  return (
+    <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '16px' }}>
+      {months.map((m, mi) => {
+        const year = m.getFullYear();
+        const month = m.getMonth();
+        const first = new Date(year, month, 1).getDay();
+        const days = new Date(year, month + 1, 0).getDate();
+        return (
+          <div key={mi} style={{ flex: '1 1 200px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 600, color: '#2c2820', marginBottom: '8px' }}>
+              {m.toLocaleString('en-US', { month: 'long', year: 'numeric' })}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '3px', textAlign: 'center' }}>
+              {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
+                <span key={i} style={{ fontSize: '9px', color: '#b0a89a' }}>{d}</span>
+              ))}
+              {Array.from({ length: first }).map((_, i) => <span key={`e${i}`} />)}
+              {Array.from({ length: days }).map((_, i) => {
+                const day = i + 1;
+                const ds = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const isBusy = set.has(ds);
+                const isPast = ds < todayStr;
+                return (
+                  <span key={day} style={{
+                    fontSize: '11px', padding: '4px 0', borderRadius: '4px',
+                    background: isBusy ? '#f3e3e0' : 'transparent',
+                    color: isBusy ? '#b91c1c' : isPast ? '#cfc8bd' : '#2c2820',
+                    textDecoration: isBusy ? 'line-through' : 'none',
+                  }}>{day}</span>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function GuestView({
   property,
   isPreviewMode = false,
@@ -90,6 +151,20 @@ export default function GuestView({
   const [galleryOpen, setGalleryOpen] = useState(null);
   const [internalSubView, setSubView] = useState(null);
   const [guestName] = useState(null);
+  const [busy, setBusy] = useState([]);
+
+  // Pull iCal busy dates for the booking calendar (public only; degrades to
+  // empty if the property has no feeds / isn't Pro / the function is absent).
+  useEffect(() => {
+    if (isPreviewMode || !slug) return;
+    let active = true;
+    fetchAvailability(slug).then(b => { if (active) setBusy(b); });
+    return () => { active = false; };
+  }, [slug, isPreviewMode]);
+
+  // Show the "Powered by str.rest" badge unless the owner is Pro (per the public
+  // RPC). Hidden in the host's own preview.
+  const showBadge = !isPreviewMode && publicData?.showBadge !== false;
 
   // In preview mode the view is driven entirely by props, so derive it during
   // render rather than syncing internal state in an effect.
@@ -243,7 +318,7 @@ export default function GuestView({
             <div className="gs-label">Your Hosts</div>
             <div className="gs-title">Meet {data['about-hosts']?.hostNames}</div>
             <div style={{ display: 'flex', gap: '16px', alignItems: 'center', marginTop: '12px' }}>
-              <img src={data['about-hosts']?.portrait} alt={data['about-hosts']?.hostNames} style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover' }} />
+              {data['about-hosts']?.portrait && <img src={data['about-hosts']?.portrait} alt={data['about-hosts']?.hostNames} style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover' }} />}
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: '14px', color: '#6b6559', lineHeight: '1.5' }}>
                   {data['about-hosts']?.shortBio}
@@ -330,7 +405,7 @@ export default function GuestView({
         {/* HERO */}
         {viewState === 'booking' && !subView && (
           <div className="hero-img">
-            <img src={propData.heroImage} alt="Property" />
+            {propData.heroImage && <img src={propData.heroImage} alt="Property" />}
             <div className="hero-text">
               <div className="hero-title">{propData.name}</div>
               <div className="hero-sub">{propData.location}</div>
@@ -344,7 +419,7 @@ export default function GuestView({
 
         {viewState === 'unlocked' && !subView && (
           <div className="hero-img">
-            <img src={propData.heroImage} alt="Property" />
+            {propData.heroImage && <img src={propData.heroImage} alt="Property" />}
             <div className="hero-text">
               <div className="hero-title">
                 {guestName ? `Welcome, ${guestName}` : 'Welcome to'}
@@ -364,7 +439,7 @@ export default function GuestView({
         {/* Initial / Passcode States */}
         {viewState === 'initial' && (
           <div className="hero-img" style={{ height: '50vh', marginTop: '16px' }}>
-            <img src={propData.heroImage} alt="Property" />
+            {propData.heroImage && <img src={propData.heroImage} alt="Property" />}
             <div className="hero-text">
               <div className="hero-title">{propData.name}</div>
               <div className="hero-sub">{propData.location}</div>
@@ -512,6 +587,12 @@ export default function GuestView({
                 <div className="gs-label">Direct booking</div>
                 <div className="gs-title">Reserve your next stay</div>
                 <div className="gs-subtitle">Book directly with us and save 12% — no platform fees.</div>
+                {busy.length > 0 && (
+                  <div style={{ marginBottom: '8px' }}>
+                    <div className="bf-label" style={{ marginBottom: '8px' }}>Availability</div>
+                    <AvailabilityCalendar busy={busy} />
+                  </div>
+                )}
                 <div className="booking-form">
                   <div className="bf-row">
                     <div className="bf-field">
@@ -556,7 +637,7 @@ export default function GuestView({
                 <div className="gs-label">About your hosts</div>
                 <div className="gs-title">Hi, we're {contentData['about-hosts']?.hostNames}</div>
                 <div style={{ width: '100%', aspectRatio: '4/3', borderRadius: '12px', overflow: 'hidden', marginTop: '16px', marginBottom: '16px' }}>
-                  <img src={contentData['about-hosts']?.portrait} alt={contentData['about-hosts']?.hostNames} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  {contentData['about-hosts']?.portrait && <img src={contentData['about-hosts']?.portrait} alt={contentData['about-hosts']?.hostNames} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
                 </div>
                 <div style={{ fontSize: '16px', color: '#2c2820', lineHeight: '1.6', marginBottom: '24px' }}>
                   {contentData['about-hosts']?.longBioParagraphs?.map((p, i) => (
@@ -696,9 +777,11 @@ export default function GuestView({
           </>
         )}
 
-        <div style={{ padding: '16px 20px', textAlign: 'center', borderTop: '0.5px solid #e8e2d9' }}>
-          <div style={{ fontSize: '10px', color: '#b0a89a', letterSpacing: '1px' }}>Powered by str.rest</div>
-        </div>
+        {showBadge && (
+          <div style={{ padding: '16px 20px', textAlign: 'center', borderTop: '0.5px solid #e8e2d9' }}>
+            <div style={{ fontSize: '10px', color: '#b0a89a', letterSpacing: '1px' }}>Powered by str.rest</div>
+          </div>
+        )}
       </div>
     </div>
   )

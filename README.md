@@ -12,10 +12,17 @@ until the guest enters the access code the host sent them.
 ## Tech stack
 
 - **React 19** + **Vite** (static SPA)
-- **Supabase** — Postgres + Auth + Storage + Row-Level Security (the backend,
+- **Supabase** — Postgres + Auth + Storage + RLS + Edge Functions (the backend,
   called directly from the browser)
+- **Stripe** subscriptions (Checkout + Billing Portal) for the Pro plan
 - **react-router-dom**
 - **Tailwind CSS v4**, **Framer Motion**, **lucide-react**
+
+## Plans
+- **Free**: 1 property, "Powered by str.rest" badge.
+- **Pro**: unlimited properties, no badge, iCal calendar sync, analytics.
+Gating is enforced both client-side and in the DB (a free-plan property-limit
+trigger); the `subscriptions` table is written only by the Stripe webhook.
 
 ## Getting started
 
