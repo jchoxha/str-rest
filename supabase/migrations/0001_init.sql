@@ -139,17 +139,23 @@ create index if not exists guestbook_property_idx on public.guestbook_posts(prop
 
 alter table public.guestbook_posts enable row level security;
 
+-- Anon has no SELECT on `properties` (only owners do), so a policy subquery
+-- against it would always be empty for guests. This security-definer helper
+-- answers "is this property published?" while bypassing RLS, so guests can read
+-- and sign the guestbook of a published property without seeing the table.
+create or replace function public.is_property_published(pid uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.properties where id = pid and published);
+$$;
+grant execute on function public.is_property_published(uuid) to anon, authenticated;
+
 drop policy if exists guestbook_public_select on public.guestbook_posts;
 create policy guestbook_public_select on public.guestbook_posts
-  for select using (
-    exists (select 1 from public.properties p where p.id = property_id and p.published)
-  );
+  for select using (public.is_property_published(property_id));
 
 drop policy if exists guestbook_public_insert on public.guestbook_posts;
 create policy guestbook_public_insert on public.guestbook_posts
-  for insert with check (
-    exists (select 1 from public.properties p where p.id = property_id and p.published)
-  );
+  for insert with check (public.is_property_published(property_id));
 
 drop policy if exists guestbook_owner_delete on public.guestbook_posts;
 create policy guestbook_owner_delete on public.guestbook_posts
