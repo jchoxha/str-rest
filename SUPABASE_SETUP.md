@@ -25,8 +25,8 @@ stand up the backend, then the app is "plug in keys and go."
 - **Google**: **Authentication → Providers → Google** → enable, paste a Google
   OAuth client ID/secret (from Google Cloud Console). Add these to
   **Authentication → URL Configuration → Redirect URLs**:
-  - `http://localhost:5173/str-rest/`
-  - `https://jchoxha.github.io/str-rest/`
+  - `http://localhost:5173/`
+  - `https://str.rest/`
 - **Magic link**: works out of the box via the Email provider.
 
 ## 4. Local env

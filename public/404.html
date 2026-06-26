@@ -7,10 +7,10 @@
       GitHub Pages SPA fallback (rafgraph/spa-github-pages). Pages serves this
       404 for any unknown path; we redirect to the app root, encoding the
       original path so index.html can restore it client-side. pathSegmentsToKeep
-      = 1 keeps the `/str-rest/` project-page prefix.
+      = 0 because the app is served at the apex (str.rest), not a sub-path.
     -->
     <script type="text/javascript">
-      var pathSegmentsToKeep = 1;
+      var pathSegmentsToKeep = 0;
       var l = window.location;
       l.replace(
         l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
