@@ -4,7 +4,7 @@ import GuestView from './GuestView'
 import { useAuth } from '../auth/auth-context'
 import { usePlan } from '../hooks/usePlan'
 import { startCheckout, openPortal } from '../lib/billing'
-import { listMyProperties, createProperty, updateProperty, deleteProperty, uploadImage } from '../lib/properties'
+import { listMyProperties, createProperty, updateProperty, deleteProperty, uploadImage, listMasterAccounts } from '../lib/properties'
 
 function SidebarItem({ label, icon, current, onClick, onSelect, extraStyle }) {
   return (
@@ -24,7 +24,7 @@ function SidebarItem({ label, icon, current, onClick, onSelect, extraStyle }) {
 }
 
 export default function HostDashboard() {
-  const { user, signOut } = useAuth()
+  const { user, signOut, isAdmin } = useAuth()
   const { isPro } = usePlan()
   const [properties, setProperties] = useState([])
   const [loading, setLoading] = useState(true)
@@ -97,6 +97,7 @@ export default function HostDashboard() {
   const IconShop = <svg viewBox="0 0 9 9" fill="none"><rect x="1" y="3" width="7" height="5" rx="0.5" stroke="white" strokeWidth="1"/><path d="M3 3V2.5a1.5 1.5 0 013 0V3" stroke="white" strokeWidth="1"/></svg>;
   const IconAddProduct = <svg viewBox="0 0 9 9" fill="none"><circle cx="4.5" cy="4.5" r="3" stroke="white" strokeWidth="1"/><path d="M3 4.5h3M4.5 3v3" stroke="white" strokeWidth="1"/></svg>;
   const IconSettings = <svg viewBox="0 0 9 9" fill="none"><circle cx="4.5" cy="4.5" r="1.5" stroke="white" strokeWidth="1"/><path d="M4.5 1v1M4.5 7v1M1 4.5h1M7 4.5h1" stroke="white" strokeWidth="1"/></svg>;
+  const IconMaster = <svg viewBox="0 0 9 9" fill="none"><path d="M1.5 7h6M1.5 2.5l1.5 2.5 1.5-2.5 1.5 2.5 1.5-2.5v4.5h-6z" stroke="white" strokeWidth="0.9" strokeLinejoin="round"/></svg>;
 
   const renderContent = () => {
     switch (activeTab) {
@@ -106,6 +107,15 @@ export default function HostDashboard() {
         return <AnalyticsView property={selectedProperty} isPro={isPro} />
       case 'Property Details':
         return <PropertyView property={selectedProperty} onChange={updateSelected} onDelete={handleDelete} isPro={isPro} />
+      case 'Master Accounts':
+        return (
+          <MasterAccountsView
+            onSelectProperty={(propId) => {
+              setSelectedId(propId)
+              setActiveTab('Dashboard')
+            }}
+          />
+        )
       case 'Account':
         return <AccountBillingView isPro={isPro} email={user?.email} onSignOut={signOut} />
       case 'Dashboard':
@@ -131,7 +141,9 @@ export default function HostDashboard() {
             <div style={{ fontSize: '15px', color: '#94a3b8', marginTop: '4px' }}>Your properties</div>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: '13px', color: '#94a3b8' }}>{user?.email}</div>
+            <div style={{ fontSize: '13px', color: '#94a3b8' }}>
+              {user?.email} {isAdmin && <span style={{ color: '#fbbf24', fontWeight: 600 }}>(Admin)</span>}
+            </div>
             <button onClick={signOut} style={{ background: 'none', border: 'none', color: '#3b82f6', fontSize: '13px', cursor: 'pointer', padding: '4px 0' }}>Sign out</button>
           </div>
         </div>
@@ -148,6 +160,7 @@ export default function HostDashboard() {
                 {p.hero_image ? <img src={p.hero_image} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : '🏠'}
               </div>
               <div style={{ fontSize: '18px', fontWeight: 600, color: 'white' }}>{p.name}</div>
+              <div style={{ fontSize: '13px', color: '#60a5fa', fontFamily: 'monospace', marginTop: '2px' }}>{p.slug}.str.rest</div>
               <div style={{ fontSize: '14px', color: '#94a3b8', marginTop: '4px' }}>{p.location || 'No location set'}</div>
               <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid #334155', fontSize: '13px', color: p.published ? '#10b981' : '#94a3b8', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: p.published ? '#10b981' : '#64748b' }}></div>
@@ -186,9 +199,19 @@ export default function HostDashboard() {
             <button onClick={() => { setSelectedId(null); setActiveTab('Dashboard'); }} style={{ background: 'none', border: 'none', color: '#3b82f6', fontSize: '12px', cursor: 'pointer', padding: 0 }}>Change</button>
           </div>
           {selectedProperty.published && (
-            <Link to={`/p/${selectedProperty.slug}`} target="_blank" style={{ display: 'block', marginTop: '8px', fontSize: '11px', color: '#60a5fa', textDecoration: 'none' }}>
-              View guest page ↗
-            </Link>
+            <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+              <a
+                href={`https://${selectedProperty.slug}.str.rest`}
+                target="_blank"
+                rel="noreferrer"
+                style={{ fontSize: '11px', color: '#60a5fa', textDecoration: 'none', fontWeight: 500 }}
+              >
+                🌐 {selectedProperty.slug}.str.rest ↗
+              </a>
+              <Link to={`/p/${selectedProperty.slug}`} target="_blank" style={{ fontSize: '10px', color: '#94a3b8', textDecoration: 'none' }}>
+                Direct path /p/{selectedProperty.slug} ↗
+              </Link>
+            </div>
           )}
         </div>
 
@@ -203,6 +226,19 @@ export default function HostDashboard() {
           <SidebarItem label="Site Builder" icon={IconProperty} current={activeTab} onSelect={setActiveTab} />
           <SidebarItem label="Property Details" icon={IconProperty} current={activeTab} onSelect={setActiveTab} />
         </div>
+
+        {isAdmin && (
+          <div className="sb-section">
+            <div className="sb-label" style={{ color: '#fbbf24' }}>Administration</div>
+            <SidebarItem
+              label="Master Accounts"
+              icon={IconMaster}
+              current={activeTab}
+              onSelect={setActiveTab}
+              extraStyle={activeTab === 'Master Accounts' ? { background: '#854d0e', color: 'white' } : { color: '#fef08a' }}
+            />
+          </div>
+        )}
         
         <div className="sb-section">
           <div className="sb-label">Settings</div>
@@ -436,6 +472,7 @@ function AnalyticsView({ property, isPro }) {
 
 function PropertyView({ property, onChange, onDelete, isPro }) {
   const [uploading, setUploading] = useState(false)
+  const [copied, setCopied] = useState(false)
   const field = { width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px', boxSizing: 'border-box' }
   const lbl = { fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '4px' }
 
@@ -453,6 +490,12 @@ function PropertyView({ property, onChange, onDelete, isPro }) {
     }
   }
 
+  const copyUrl = () => {
+    navigator.clipboard.writeText(`https://${property.slug}.str.rest`)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
   return (
     <>
       <div className="page-header">
@@ -467,10 +510,46 @@ function PropertyView({ property, onChange, onDelete, isPro }) {
 
       <div className="dash-grid">
         <div className="dash-card" style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
-          <div className="dash-card-title">Basic Info</div>
+          <div className="dash-card-title">Basic Info & Domain</div>
           <div>
             <label style={lbl}>Display Name</label>
             <input type="text" value={property.name || ''} onChange={e => onChange({ name: e.target.value })} style={field} />
+          </div>
+          <div>
+            <label style={lbl}>Custom Subdomain & URL</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <input
+                type="text"
+                value={property.slug || ''}
+                onChange={e => {
+                  const cleaned = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')
+                  onChange({ slug: cleaned })
+                }}
+                placeholder="e.g. bostonbunkhouse"
+                style={{ ...field, flex: 1, fontFamily: 'monospace', fontWeight: 600, color: '#1e293b' }}
+              />
+              <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 600 }}>.str.rest</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '6px' }}>
+              <span style={{ fontSize: '11px', color: '#64748b' }}>
+                Direct:{' '}
+                <a
+                  href={`/p/${property.slug}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ color: '#3b82f6', textDecoration: 'none' }}
+                >
+                  {property.slug}.str.rest ↗
+                </a>
+              </span>
+              <button
+                type="button"
+                onClick={copyUrl}
+                style={{ background: 'none', border: 'none', color: copied ? '#10b981' : '#3b82f6', fontSize: '11px', cursor: 'pointer', fontWeight: 500, padding: 0 }}
+              >
+                {copied ? '✓ Copied URL' : 'Copy link'}
+              </button>
+            </div>
           </div>
           <div>
             <label style={lbl}>Location</label>
@@ -769,6 +848,194 @@ function SiteBuilderView({ property, onChange }) {
              onEditSection={(id) => setEditingSection(id)}
            />
          </div>
+      </div>
+    </>
+  )
+}
+
+function MasterAccountsView({ onSelectProperty }) {
+  const [data, setData] = useState({ accounts: [], properties: [] })
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+
+  useEffect(() => {
+    let active = true
+    listMasterAccounts()
+      .then(res => { if (active) setData(res) })
+      .finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [])
+
+  const filteredProps = data.properties.filter(p =>
+    (p.name || '').toLowerCase().includes(search.toLowerCase()) ||
+    (p.slug || '').toLowerCase().includes(search.toLowerCase()) ||
+    (p.owner_email || '').toLowerCase().includes(search.toLowerCase())
+  )
+
+  const totalViews = data.properties.reduce((sum, p) => sum + (p.views || 0), 0)
+
+  if (loading) {
+    return <div style={{ padding: '24px', color: '#94a3b8' }}>Loading master accounts...</div>
+  }
+
+  return (
+    <>
+      <div className="page-header">
+        <div>
+          <div className="page-title">👑 Master Accounts & Registry</div>
+          <div className="page-sub">System administrator oversight across all hosts, domains, and properties</div>
+        </div>
+      </div>
+
+      <div className="metrics">
+        <div className="metric-card">
+          <div className="metric-label">Total Registered Accounts</div>
+          <div className="metric-val">{data.accounts.length}</div>
+          <div className="metric-change">Active host profiles</div>
+        </div>
+        <div className="metric-card">
+          <div className="metric-label">Total Properties</div>
+          <div className="metric-val">{data.properties.length}</div>
+          <div className="metric-change">{data.properties.filter(p => p.published).length} published live</div>
+        </div>
+        <div className="metric-card">
+          <div className="metric-label">Pro Subscribers</div>
+          <div className="metric-val">{data.accounts.filter(a => a.plan === 'pro').length}</div>
+          <div className="metric-change">Paid host tiers</div>
+        </div>
+        <div className="metric-card">
+          <div className="metric-label">Total Guest Views</div>
+          <div className="metric-val">{totalViews.toLocaleString()}</div>
+          <div className="metric-change">Across all subdomains</div>
+        </div>
+      </div>
+
+      {/* HOST ACCOUNTS TABLE */}
+      <div className="dash-card" style={{ marginBottom: '24px' }}>
+        <div className="dash-card-title" style={{ marginBottom: '16px' }}>
+          Registered Host Accounts
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid #e2e8f0', color: '#64748b' }}>
+                <th style={{ padding: '10px 12px' }}>Email / User</th>
+                <th style={{ padding: '10px 12px' }}>Display Name</th>
+                <th style={{ padding: '10px 12px' }}>Plan</th>
+                <th style={{ padding: '10px 12px' }}>Properties</th>
+                <th style={{ padding: '10px 12px' }}>Role</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.accounts.map(acc => (
+                <tr key={acc.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                  <td style={{ padding: '12px', fontWeight: 600, color: '#1e293b' }}>{acc.email}</td>
+                  <td style={{ padding: '12px', color: '#475569' }}>{acc.displayName || '—'}</td>
+                  <td style={{ padding: '12px' }}>
+                    <span style={{
+                      padding: '2px 8px',
+                      borderRadius: '999px',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      background: acc.plan === 'pro' ? '#dcfce7' : '#f1f5f9',
+                      color: acc.plan === 'pro' ? '#166534' : '#64748b'
+                    }}>
+                      {acc.plan ? acc.plan.toUpperCase() : 'FREE'}
+                    </span>
+                  </td>
+                  <td style={{ padding: '12px', color: '#475569' }}>{acc.properties?.length || 0} listings</td>
+                  <td style={{ padding: '12px', color: acc.isAdmin ? '#b45309' : '#64748b', fontWeight: acc.isAdmin ? 600 : 400 }}>
+                    {acc.isAdmin ? '👑 Admin' : 'Host'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* MASTER PROPERTIES REGISTRY */}
+      <div className="dash-card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+          <div className="dash-card-title">
+            All Properties & Subdomains ({filteredProps.length})
+          </div>
+          <input
+            type="text"
+            placeholder="Search by name, subdomain, or owner..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '13px', width: '260px' }}
+          />
+        </div>
+
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid #e2e8f0', color: '#64748b' }}>
+                <th style={{ padding: '10px 12px' }}>Property</th>
+                <th style={{ padding: '10px 12px' }}>Subdomain</th>
+                <th style={{ padding: '10px 12px' }}>Owner</th>
+                <th style={{ padding: '10px 12px' }}>Status</th>
+                <th style={{ padding: '10px 12px' }}>Views</th>
+                <th style={{ padding: '10px 12px', textAlign: 'right' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredProps.map(prop => (
+                <tr key={prop.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                  <td style={{ padding: '12px', fontWeight: 600, color: '#1e293b' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '16px' }}>{prop.hero_image ? '🏠' : '🏡'}</span>
+                      <div>
+                        <div>{prop.name}</div>
+                        <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 400 }}>{prop.location || 'No location'}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td style={{ padding: '12px', fontFamily: 'monospace', color: '#2563eb', fontWeight: 500 }}>
+                    {prop.slug}.str.rest
+                  </td>
+                  <td style={{ padding: '12px', color: '#64748b' }}>
+                    {prop.owner_email || 'admin@str.rest'}
+                  </td>
+                  <td style={{ padding: '12px' }}>
+                    <span style={{
+                      padding: '2px 8px',
+                      borderRadius: '999px',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      background: prop.published ? '#dcfce7' : '#fef3c7',
+                      color: prop.published ? '#166534' : '#92400e'
+                    }}>
+                      {prop.published ? 'Published' : 'Draft'}
+                    </span>
+                  </td>
+                  <td style={{ padding: '12px', color: '#475569' }}>
+                    {(prop.views || 0).toLocaleString()}
+                  </td>
+                  <td style={{ padding: '12px', textAlign: 'right' }}>
+                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                      <button
+                        onClick={() => onSelectProperty(prop.id)}
+                        style={{ padding: '4px 8px', background: '#e0f2fe', color: '#0369a1', border: 'none', borderRadius: '4px', fontSize: '12px', cursor: 'pointer', fontWeight: 500 }}
+                      >
+                        Manage
+                      </button>
+                      <Link
+                        to={`/p/${prop.slug}`}
+                        target="_blank"
+                        style={{ padding: '4px 8px', background: '#f1f5f9', color: '#475569', textDecoration: 'none', borderRadius: '4px', fontSize: '12px', fontWeight: 500 }}
+                      >
+                        View ↗
+                      </Link>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </>
   )

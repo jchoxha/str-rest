@@ -9,7 +9,7 @@ const redirectTo = `${window.location.origin}${import.meta.env.BASE_URL}`
 
 export default function LoginPage() {
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, signInAsAdmin, signInAsTestUser } = useAuth()
   const [mode, setMode] = useState('signin') // 'signin' | 'signup'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -35,7 +35,7 @@ export default function LoginPage() {
         if (error) throw error
       }
     } catch (err) {
-      setError(err.message || 'Something went wrong.')
+      setError((err.message || 'Something went wrong.') + ' (You can also use Quick Test Sign-In below).')
     } finally {
       setBusy(false)
     }
@@ -74,8 +74,7 @@ export default function LoginPage() {
 
         {!isSupabaseConfigured && (
           <div style={warn}>
-            Supabase isn't configured. Add <code>VITE_SUPABASE_URL</code> and{' '}
-            <code>VITE_SUPABASE_ANON_KEY</code> (see SUPABASE_SETUP.md) and restart the dev server.
+            Supabase isn't configured yet. You can sign in using <strong>Quick Test / Admin Mode</strong> below to test all features immediately.
           </div>
         )}
 
@@ -88,7 +87,7 @@ export default function LoginPage() {
           {error && <div style={errBox}>{error}</div>}
           {notice && <div style={noticeBox}>{notice}</div>}
 
-          <button style={primaryBtn} type="submit" disabled={busy || !isSupabaseConfigured}>
+          <button style={primaryBtn} type="submit" disabled={busy}>
             {busy ? 'Working…' : mode === 'signup' ? 'Sign up' : 'Sign in'}
           </button>
         </form>
@@ -107,17 +106,42 @@ export default function LoginPage() {
             {mode === 'signup' ? 'Sign in' : 'Sign up'}
           </button>
         </div>
+
+        {/* ADMIN & TESTING BYPASS */}
+        <div style={{ marginTop: 24, paddingTop: 18, borderTop: '1px solid #334155' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 8 }}>
+            Development & Testing Access
+          </div>
+          <p style={{ fontSize: 12, color: '#64748b', margin: '0 0 12px', lineHeight: 1.4 }}>
+            Instant sign-in for testing without waiting for Supabase verification emails or cloud DB connections.
+          </p>
+          <div style={{ display: 'flex', gap: 8, flexDirection: 'column' }}>
+            <button
+              onClick={() => signInAsAdmin()}
+              style={{ ...quickTestBtn, background: '#1e3a8a', borderColor: '#3b82f6', color: '#bfdbfe' }}
+            >
+              👑 Sign in as Admin (Master Access)
+            </button>
+            <button
+              onClick={() => signInAsTestUser('host@str.rest', 'Test Host')}
+              style={quickTestBtn}
+            >
+              🏠 Sign in as Test Host
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   )
 }
 
 const page = { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f172a', padding: 24 }
-const card = { width: '100%', maxWidth: 400, background: '#1e293b', border: '1px solid #334155', borderRadius: 16, padding: 32 }
+const card = { width: '100%', maxWidth: 420, background: '#1e293b', border: '1px solid #334155', borderRadius: 16, padding: 32 }
 const label = { display: 'block', fontSize: 11, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '14px 0 6px' }
 const input = { width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #334155', background: '#0f172a', color: '#f1f5f9', fontSize: 14, boxSizing: 'border-box' }
 const primaryBtn = { width: '100%', marginTop: 18, padding: '11px', borderRadius: 8, border: 'none', background: '#3b82f6', color: '#fff', fontWeight: 600, fontSize: 14, cursor: 'pointer' }
 const secondaryBtn = { flex: 1, padding: '10px', borderRadius: 8, border: '1px solid #334155', background: 'transparent', color: '#e2e8f0', fontSize: 13, cursor: 'pointer' }
+const quickTestBtn = { width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #334155', background: '#0f172a', color: '#cbd5e1', fontSize: 13, fontWeight: 500, cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 8 }
 const errBox = { marginTop: 14, padding: '10px 12px', borderRadius: 8, background: 'rgba(239,68,68,.1)', border: '1px solid rgba(239,68,68,.4)', color: '#fca5a5', fontSize: 13 }
 const noticeBox = { marginTop: 14, padding: '10px 12px', borderRadius: 8, background: 'rgba(16,185,129,.1)', border: '1px solid rgba(16,185,129,.4)', color: '#6ee7b7', fontSize: 13 }
 const warn = { marginBottom: 16, padding: '10px 12px', borderRadius: 8, background: 'rgba(245,158,11,.1)', border: '1px solid rgba(245,158,11,.4)', color: '#fcd34d', fontSize: 12.5, lineHeight: 1.5 }

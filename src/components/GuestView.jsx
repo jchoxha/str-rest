@@ -117,8 +117,10 @@ export default function GuestView({
   onMoveSection,
   onToggleVisibility,
   onEditSection,
+  slug: propSlug,
 }) {
-  const { slug } = useParams();
+  const params = useParams();
+  const slug = propSlug || params.slug;
 
   // Public route fetches the published property (secrets stripped) by slug;
   // unlocking swaps in the full content. Preview mode renders the in-memory

@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/auth-context'
 
 const features = [
+  { icon: '🌐', title: 'Your branded subdomain', desc: 'Give guests a clean, memorable link like BostonBunkHouse.STR.Rest that points straight to your stay.' },
   { icon: '🏡', title: 'Digital guidebook', desc: 'Wi-Fi, door codes, house rules and local tips — everything your guests need, in one link.' },
   { icon: '🛍️', title: 'Shop your stay', desc: 'Earn affiliate revenue from the products guests love in your space.' },
   { icon: '📅', title: 'Direct bookings', desc: 'Convert past guests into repeat stays and skip the platform fees.' },
